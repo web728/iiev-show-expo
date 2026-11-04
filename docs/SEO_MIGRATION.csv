@@ -1,0 +1,15 @@
+old_url,new_url,http_status,canonical_owner,notes
+https://iievshow.com/,https://iievshow.com/,200,/,Same URL - homepage
+https://iievshow.com/about-us/,https://iievshow.com/about/,301,/about/,Code redirect (src/config/redirects.ts)
+https://iievshow.com/about-organisers/,https://iievshow.com/about/#organiser,301,/about/,Organiser section
+https://iievshow.com/why-exhibit/,https://iievshow.com/exhibit/why-exhibit/,301,/exhibit/why-exhibit/,
+https://iievshow.com/exhibitor-registration/,https://iievshow.com/exhibit/book-a-stall/,301,/exhibit/book-a-stall/,
+https://iievshow.com/why-visit/,https://iievshow.com/visit/why-visit/,301,/visit/why-visit/,
+https://iievshow.com/visitor-registration/,https://iievshow.com/visit/register/,301,/visit/register/,
+https://iievshow.com/ev-dynamics-conference-glimpses/,https://iievshow.com/conference/,301,/conference/,Move to gallery album once photos are licensed
+https://iievshow.com/gallery/,https://iievshow.com/gallery/,200,/gallery/,Same URL
+https://iievshow.com/contact-us/,https://iievshow.com/contact/,301,/contact/,
+https://iievshow.com/brochure/,https://iievshow.com/downloads/,301,/downloads/,
+https://iievshow.com/conference/,https://iievshow.com/conference/,200,/conference/,Same URL
+https://iievshow.com/7th-PUNE-EV-Show%20PSR-2025.pdf,(keep file),200,/past-editions/2025-pune/,Upload PDF to Downloads and add CMS redirect to the new file URL
+TODO,,,,"Run a full crawl + Search Console 'Pages' export before launch; add any further indexed URLs via Admin -> Redirects"
