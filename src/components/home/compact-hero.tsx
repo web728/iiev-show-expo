@@ -75,17 +75,28 @@ export function CompactHero() {
             <motion.p {...fade(0.55)} className="mt-6 max-w-md text-sm leading-7 text-white/80 sm:text-base sm:leading-8">
               Vehicles, components, charging and technology, with the people who build them.
             </motion.p>
-            <motion.div {...fade(0.7)} className="mt-8 flex flex-wrap items-center gap-x-8 gap-y-4">
-              <Link href="#participate" className="group inline-flex min-h-12 items-center gap-4 rounded-full bg-brand py-2 pl-6 pr-2 text-sm font-bold text-white transition duration-300 hover:bg-brand-dark active:scale-[0.98] focus-visible:outline-offset-4">
-                Exhibition enquiries
-                <span className="grid h-8 w-8 place-items-center rounded-full bg-white text-brand-dark transition-transform duration-300 group-hover:scale-105">
-                  <ArrowRight size={16} aria-hidden="true" className="-rotate-45 transition-transform duration-300 group-hover:rotate-0" />
-                </span>
-              </Link>
-              <Link href="#show-sectors" className="text-sm font-bold text-white underline decoration-white/40 underline-offset-[6px] transition-colors duration-300 hover:decoration-brand focus-visible:outline-offset-4">
-                Explore the show
-              </Link>
-            </motion.div>
+       <motion.div {...fade(0.7)} className="mt-8 flex flex-wrap items-center gap-x-8 gap-y-4">
+  <Link
+    href="/exhibit/book-a-stall/"
+    className="group inline-flex min-h-12 items-center gap-4 rounded-full bg-brand py-2 pl-6 pr-2 text-sm font-bold text-white transition duration-300 hover:bg-brand-dark active:scale-[0.98] focus-visible:outline-offset-4"
+  >
+    Book Your Exhibition Space
+    <span className="grid h-8 w-8 place-items-center rounded-full bg-white text-brand-dark transition-transform duration-300 group-hover:scale-105">
+      <ArrowRight
+        size={16}
+        aria-hidden="true"
+        className="-rotate-45 transition-transform duration-300 group-hover:rotate-0"
+      />
+    </span>
+  </Link>
+
+  <Link
+    href="/visit/register/"
+    className="text-sm font-bold text-white underline decoration-white/40 underline-offset-[6px] transition-colors duration-300 hover:decoration-brand focus-visible:outline-offset-4"
+  >
+    Register as a Visitor
+  </Link>
+</motion.div>
           </div>
 
           {/* The date, set as type */}

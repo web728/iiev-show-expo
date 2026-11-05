@@ -112,39 +112,7 @@ export function ConsentBlock({
       <legend className="sr-only">
         Privacy and communication preferences
       </legend>
-
-      <div className="flex items-start gap-3">
-        <input
-          id="privacyAccepted"
-          name="privacyAccepted"
-          type="checkbox"
-          required
-          aria-invalid={Boolean(privacyError)}
-          aria-describedby={
-            privacyError
-              ? "privacyAccepted-error"
-              : undefined
-          }
-          className="mt-1 size-5 shrink-0 accent-[#23A455]"
-        />
-
-        <label
-          htmlFor="privacyAccepted"
-          className="text-[13px] leading-6 text-[#405548]"
-        >
-          I have read the{" "}
-          <Link
-            href="/privacy-policy/"
-            className="font-bold text-[#16893F] underline underline-offset-4"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Privacy Policy
-          </Link>{" "}
-          and agree that the organiser may use
-          these details to {purpose}.
-        </label>
-      </div>
+ 
 
       {privacyError && (
         <p

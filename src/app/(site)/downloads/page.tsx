@@ -11,7 +11,7 @@ export const metadata: Metadata = pageMetadata({
   path: "/downloads/",
 });
 
-const REPORT = "/downloads/9th_India_International_EV_Show_2027_Post_Show_Report.pdf";
+const REPORT = "/downloads/8th_India_International_EV_Show_2026_Post_Show_Report.pdf";
 
 export default function DownloadsPage() {
   return (
