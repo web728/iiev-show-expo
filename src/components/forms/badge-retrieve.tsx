@@ -1,53 +1,39 @@
 "use client";
-
-import { useState, type FormEvent } from "react";
-import { buttonClass } from "@/components/ui/button";
-import { Icon } from "@/components/ui/icons";
-import { FieldShell, inputCls } from "./fields";
+import { useCallback, useRef, useState, type FormEvent } from "react";
+import { ArrowRight, CheckCircle2, LoaderCircle } from "lucide-react";
+import { RecaptchaV2, type RecaptchaHandle } from "./recaptcha-v2";
+import { inputCls } from "./fields";
 
 export function BadgeRetrieveForm() {
-  const [state, setState] = useState<{ phase: "idle" | "sending" | "done" | "error"; message?: string; fieldError?: string }>({ phase: "idle" });
-
-  async function onSubmit(e: FormEvent<HTMLFormElement>) {
-    e.preventDefault();
-    const fd = new FormData(e.currentTarget);
-    setState({ phase: "sending" });
+  const [token, setToken] = useState("");
+  const [error, setError] = useState("");
+  const [phase, setPhase] = useState<"idle" | "submitting" | "success">("idle");
+  const captcha = useRef<RecaptchaHandle>(null);
+  const onCaptcha = useCallback((value: string) => { setToken(value); setError(""); }, []);
+  const onError = useCallback((message: string) => setError(message), []);
+  async function submit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (phase === "submitting") return;
+    const form = event.currentTarget;
+    if (!form.reportValidity()) return;
+    if (!token) { setError("Complete the 'I'm not a robot' verification first."); return; }
+    setPhase("submitting");
     try {
-      const res = await fetch("/api/badge/request/", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email: fd.get("email"), website_url_confirm: fd.get("website_url_confirm") || "" }),
-      });
-      const data = await res.json().catch(() => ({}));
-      if (res.ok && data.ok) setState({ phase: "done", message: data.message });
-      else setState({ phase: "error", message: data.message || "Please try again.", fieldError: data.fieldErrors?.email });
-    } catch {
-      setState({ phase: "error", message: "Network problem — please try again." });
+      const data = new FormData(form);
+      const res = await fetch("/api/badge/request/", { method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: String(data.get("email") || "").trim(), recaptchaToken: token, website_url_confirm: "" }) });
+      const result = await res.json().catch(() => ({}));
+      if (!res.ok || !result.ok) throw new Error(result.message || "Unable to process the request");
+      setPhase("success");
+    } catch (e) {
+      setPhase("idle"); setError(e instanceof Error ? e.message : "Please retry"); captcha.current?.reset();
     }
   }
-
-  if (state.phase === "done") {
-    return (
-      <div role="status" className="rounded-2xl border border-brand-green/30 bg-brand-green/5 p-6">
-        <p className="flex items-center gap-2 font-bold text-ink"><Icon.Mail className="size-5 text-brand-green" /> Check your inbox</p>
-        <p className="mt-2 text-ink-soft">{state.message}</p>
-      </div>
-    );
-  }
-
-  return (
-    <form onSubmit={onSubmit} noValidate className="grid gap-5">
-      {state.phase === "error" ? <p role="alert" className="rounded-xl border border-danger/40 bg-danger/5 p-3 text-sm font-semibold text-danger">{state.message}</p> : null}
-      <div aria-hidden="true" className="absolute -left-[9999px] h-0 w-0 overflow-hidden">
-        <input name="website_url_confirm" tabIndex={-1} autoComplete="off" />
-      </div>
-      <FieldShell id="email" label="Email you registered with" required error={state.fieldError}>
-        <input id="email" name="email" type="email" required autoComplete="email" inputMode="email" className={inputCls} aria-invalid={Boolean(state.fieldError)} />
-      </FieldShell>
-      <button type="submit" className={buttonClass("primary", "lg", "justify-self-start")} disabled={state.phase === "sending"}>
-        {state.phase === "sending" ? "Sending…" : "Email me a secure link"}
-      </button>
-      <p className="text-[13px] text-ink-muted">For your privacy we never display badge details on this page — the link goes only to the registered inbox.</p>
-    </form>
-  );
+  if (phase === "success") return <div role="status" className="rounded-xl border border-[#CFE8D6] bg-[#F0FAF2] p-6"><CheckCircle2 className="size-9 text-[#23A455]"/><h3 className="mt-4 text-lg font-bold text-[#102A1E]">Check your inbox</h3><p className="mt-2 text-sm text-[#526357]">If your email matches an approved registration, you will receive a secure badge retrieval link.</p></div>;
+  return <form onSubmit={submit} className="space-y-5">
+    <div><label htmlFor="badge-retrieve-email" className="mb-2 block text-xs font-bold text-[#102A1E]">Registration Email</label><input className={inputCls} id="badge-retrieve-email" name="email" type="email" required autoComplete="email" placeholder="name@example.com"/></div>
+    <RecaptchaV2 ref={captcha} onChange={onCaptcha} onError={onError}/>
+    {error && <p role="alert" className="text-xs text-red-600">{error}</p>}
+    <button className="flex min-h-12 w-full items-center justify-center gap-2 rounded-xl bg-[#23A455] px-5 text-sm font-bold text-white disabled:opacity-55" disabled={phase === "submitting" || !token} type="submit">{phase === "submitting" ? <><LoaderCircle size={17} className="animate-spin"/> Requesting…</> : <>Retrieve Badge <ArrowRight size={17}/></>}</button>
+  </form>;
 }

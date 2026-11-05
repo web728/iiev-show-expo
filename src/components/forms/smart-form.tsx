@@ -1,847 +1,208 @@
-
 "use client";
 
 import Link from "next/link";
-import {
-  useEffect,
-  useId,
-  useRef,
-  useState,
-  type FormEvent,
-  type ReactNode,
-} from "react";
-import {
-  AlertCircle,
-  ArrowRight,
-  Check,
-  ChevronDown,
-  LoaderCircle,
-  ShieldCheck,
-} from "lucide-react";
-
-import {
-  COUNTRIES,
-  INDIAN_STATES,
-} from "@/config/options";
-import {
-  getAttribution,
-  track,
-  type AnalyticsEvent,
-} from "@/lib/analytics/client";
-import {
-  ConsentBlock,
-  FieldShell,
-  describedBy,
-  inputCls,
-} from "./fields";
+import { useCallback, useEffect, useRef, useState, type FormEvent, type ReactNode } from "react";
+import { AlertCircle, ArrowRight, CheckCircle2, ChevronDown, LoaderCircle, ShieldCheck } from "lucide-react";
+import { COUNTRIES, INDIAN_STATES } from "@/config/options";
+import { getAttribution, track, type AnalyticsEvent } from "@/lib/analytics/client";
+import { FieldShell, inputCls, describedBy } from "./fields";
+import { RecaptchaV2, type RecaptchaHandle } from "./recaptcha-v2";
 
 export type FieldDef =
-  | {
-      kind: "text" | "email" | "tel" | "url";
-      name: string;
-      label: string;
-      required?: boolean;
-      autoComplete?: string;
-      hint?: string;
-      placeholder?: string;
-      half?: boolean;
-      maxLength?: number;
-    }
-  | {
-      kind: "textarea";
-      name: string;
-      label: string;
-      required?: boolean;
-      hint?: string;
-      placeholder?: string;
-      rows?: number;
-      maxLength?: number;
-    }
-  | {
-      kind: "select";
-      name: string;
-      label: string;
-      required?: boolean;
-      options:
-        | readonly string[]
-        | readonly { value: string; label: string }[];
-      hint?: string;
-      half?: boolean;
-    }
-  | {
-      kind: "checkboxes";
-      name: string;
-      label: string;
-      required?: boolean;
-      options:
-        | readonly string[]
-        | readonly { value: string; label: string }[];
-      hint?: string;
-      columns?: 1 | 2;
-    }
+  | { kind: "text" | "email" | "tel" | "url"; name: string; label: string; required?: boolean; autoComplete?: string; hint?: string; placeholder?: string; half?: boolean; maxLength?: number }
+  | { kind: "textarea"; name: string; label: string; required?: boolean; hint?: string; placeholder?: string; rows?: number; maxLength?: number }
+  | { kind: "select"; name: string; label: string; required?: boolean; options: readonly string[] | readonly { value: string; label: string }[]; hint?: string; half?: boolean }
+  | { kind: "checkboxes"; name: string; label: string; required?: boolean; options: readonly string[] | readonly { value: string; label: string }[]; hint?: string; columns?: 1 | 2 }
   | { kind: "location" }
   | { kind: "heading"; label: string; text?: string };
-
-export type SuccessData = {
-  ref?: string;
-  message?: string;
-  badgeAccess?: string;
-  status?: string;
-  [key: string]: unknown;
-};
-
-type Props = {
-  endpoint: string;
-  fields: FieldDef[];
-  submitLabel: string;
-  consentPurpose: string;
-  formName: string;
-  startEvent?: AnalyticsEvent;
-  submitEvent?: AnalyticsEvent;
-  renderSuccess?: (data: SuccessData) => ReactNode;
-  minimal?: boolean;
-};
-
-type State =
-  | { phase: "idle" | "submitting" }
-  | {
-      phase: "error";
-      message: string;
-      fieldErrors: Record<string, string>;
-    }
-  | { phase: "success"; data: SuccessData };
-
-type SelectField = Extract<
-  FieldDef,
-  { kind: "select" | "checkboxes" }
->;
-
-function getOptions(field: SelectField) {
-  return field.options.map((option) =>
-    typeof option === "string"
-      ? { value: option, label: option }
-      : option
-  );
+export type SuccessData = { ref?: string; status?: string; badgeAccess?: string; message?: string; [key: string]: unknown };
+type Props = { endpoint: string; fields: FieldDef[]; submitLabel: string; consentPurpose: string; formName: string;
+  startEvent?: AnalyticsEvent; submitEvent?: AnalyticsEvent; renderSuccess?: (data: SuccessData) => ReactNode; minimal?: boolean };
+type FormStatus = { phase: "idle" | "submitting" } | { phase: "success"; data: SuccessData } |
+  { phase: "error"; message: string; fieldErrors: Record<string, string> };
+function options(f: Extract<FieldDef, { kind: "select" | "checkboxes" }>) {
+  return f.options.map((v) => typeof v === "string" ? { value: v, label: v } : v);
 }
+const fieldClass = `${inputCls} w-full`;
 
-function createKey() {
-  if (
-    typeof crypto !== "undefined" &&
-    "randomUUID" in crypto
-  ) {
-    return crypto.randomUUID();
-  }
-
-  return (
-    Date.now().toString(36) +
-    "-" +
-    Math.random().toString(36).slice(2)
-  );
-}
-
-function SelectControl({
-  id,
-  name,
-  options,
-  required,
-  defaultValue,
-  autoComplete,
-  error,
-  hint,
-}: {
-  id: string;
-  name: string;
-  options: ReturnType<typeof getOptions>;
-  required?: boolean;
-  defaultValue?: string;
-  autoComplete?: string;
-  error?: string;
-  hint?: string;
-}) {
-  return (
-    <div className="relative">
-      <select
-        id={id}
-        name={name}
-        required={required}
-        defaultValue={defaultValue ?? ""}
-        autoComplete={autoComplete}
-        aria-invalid={Boolean(error)}
-        aria-describedby={describedBy(id, error, hint)}
-        className={`${inputCls} cursor-pointer appearance-none pr-12`}
-      >
-        {defaultValue !== "India" && (
-          <option value="">
-            {required ? "Select an option" : "Select (optional)"}
-          </option>
-        )}
-
-        {options.map((option) => (
-          <option
-            key={option.value}
-            value={option.value}
-          >
-            {option.label}
-          </option>
-        ))}
-      </select>
-
-      <ChevronDown
-        size={17}
-        strokeWidth={2}
-        aria-hidden="true"
-        className="pointer-events-none absolute right-[17px] top-1/2 -translate-y-1/2 text-[#698471]"
-      />
-    </div>
-  );
-}
-
-export function SmartForm({
-  endpoint,
-  fields,
-  submitLabel,
-  consentPurpose,
-  formName,
-  startEvent,
-  submitEvent,
-  renderSuccess,
-  minimal = false,
-}: Props) {
-  const formId = useId().replace(/:/g, "");
-
-  const [state, setState] = useState<State>({
-    phase: "idle",
-  });
+export function SmartForm({ endpoint, fields, submitLabel, consentPurpose, formName, startEvent, submitEvent, renderSuccess, minimal = false }: Props) {
+  const [status, setStatus] = useState<FormStatus>({ phase: "idle" });
   const [country, setCountry] = useState("India");
-
-  const keyRef = useRef("");
-  const startedAt = useRef(0);
-  const startedRef = useRef(false);
+  const [captchaToken, setCaptchaToken] = useState("");
+  const [captchaError, setCaptchaError] = useState("");
+  const [privacy, setPrivacy] = useState(false);
+  const [draftState, setDraftState] = useState<"idle" | "saving" | "saved" | "failed">("idle");
   const formRef = useRef<HTMLFormElement>(null);
-  const errorRef = useRef<HTMLDivElement>(null);
-  const successRef = useRef<HTMLDivElement>(null);
+  const captchaRef = useRef<RecaptchaHandle>(null);
+  const draftTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const keyRef = useRef("");
+  const beganAt = useRef(0);
+  const begun = useRef(false);
+  const submitted = useRef(false);
+  const busy = useRef(false);
 
   useEffect(() => {
-    keyRef.current = createKey();
-    startedAt.current = Date.now();
-  }, []);
+    const sessionKey = `iiev-form-key:${formName}`;
+    const prior = window.sessionStorage.getItem(sessionKey);
+    const key = prior && /^[0-9a-f-]{36}$/i.test(prior) ? prior : crypto.randomUUID();
+    window.sessionStorage.setItem(sessionKey, key);
+    keyRef.current = key;
+    beganAt.current = Date.now();
+    return () => { if (draftTimer.current) clearTimeout(draftTimer.current); };
+  }, [formName]);
 
-  const submitting = state.phase === "submitting";
-  const fieldErrors =
-    state.phase === "error"
-      ? state.fieldErrors
-      : {};
+  const onCaptcha = useCallback((token: string) => { setCaptchaToken(token); setCaptchaError(""); }, []);
+  const onCaptchaError = useCallback((message: string) => setCaptchaError(message), []);
+  const fieldErrors = status.phase === "error" ? status.fieldErrors : {};
+  const loading = status.phase === "submitting";
 
-  function onFirstInput() {
-    if (!startedRef.current && startEvent) {
-      startedRef.current = true;
-      track(startEvent, { form: formName });
+  const collect = useCallback(() => {
+    const fd = new FormData(formRef.current!);
+    const data: Record<string, unknown> = {};
+    for (const f of fields) {
+      if (f.kind === "heading") continue;
+      if (f.kind === "location") {
+        data.country = String(fd.get("country") ?? "").trim();
+        data.city = String(fd.get("city") ?? "").trim();
+        data.state = String(fd.get("state") ?? "").trim();
+      } else if (f.kind === "checkboxes") {
+        data[f.name] = fd.getAll(f.name).map(String);
+      } else {
+        const value = String(fd.get(f.name) ?? "").trim();
+        data[f.name] = value || undefined;
+      }
     }
+    return data;
+  }, [fields]);
+
+  const saveDraft = useCallback(async () => {
+    if (!privacy || submitted.current || busy.current || !formRef.current || !keyRef.current) return;
+    const data = collect();
+    if (![data.fullName, data.email, data.phone].some(Boolean)) return;
+    setDraftState("saving");
+    try {
+      const res = await fetch("/api/forms/draft/", { method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ idempotencyKey: keyRef.current, form: formName === "visitor_registration" ? "visitor" : formName === "stall_enquiry" ? "stall" : formName,
+          data, privacyAccepted: true, website_url_confirm: "" }), keepalive: true });
+      if (!res.ok) throw new Error("Draft not saved");
+      setDraftState("saved");
+    } catch { setDraftState("failed"); }
+  }, [privacy, collect, formName]);
+
+  useEffect(() => {
+    if (!privacy) return;
+    const timer = setTimeout(() => { void saveDraft(); }, 250);
+    return () => clearTimeout(timer);
+  }, [privacy, saveDraft]);
+
+  function scheduleSave() {
+    if (draftTimer.current) clearTimeout(draftTimer.current);
+    if (!privacy || submitted.current) return;
+    draftTimer.current = setTimeout(() => { void saveDraft(); }, 1300);
   }
 
-  async function onSubmit(
-    event: FormEvent<HTMLFormElement>
-  ) {
-    event.preventDefault();
-
-    if (submitting) return;
-
-    const form = event.currentTarget;
-
-    // Native validation for minimal visitor/exhibitor forms.
-    if (minimal && !form.reportValidity()) {
-      return;
+  function firstInput() {
+    if (!begun.current) {
+      begun.current = true;
+      if (startEvent) track(startEvent, { form: formName });
     }
+    scheduleSave();
+  }
 
-    const formData = new FormData(form);
-    const payload: Record<string, unknown> = {};
-
-    for (const field of fields) {
-      if (field.kind === "heading") continue;
-
-      if (field.kind === "location") {
-        payload.country = String(
-          formData.get("country") ?? ""
-        ).trim();
-
-        payload.state =
-          String(formData.get("state") ?? "").trim() ||
-          undefined;
-
-        payload.city = String(
-          formData.get("city") ?? ""
-        ).trim();
-
-        continue;
-      }
-
-      if (field.kind === "checkboxes") {
-        payload[field.name] = formData
-          .getAll(field.name)
-          .map(String);
-      } else {
-        const value = String(
-          formData.get(field.name) ?? ""
-        ).trim();
-
-        payload[field.name] =
-          value === "" ? undefined : value;
-      }
-    }
-
-    // Preserve the backend's existing privacy flags.
-    // Minimal mode displays a submission privacy notice.
-    payload.privacyAccepted = minimal
-      ? true
-      : formData.get("privacyAccepted") === "on";
-
-    payload.marketingOptIn = minimal
-      ? false
-      : formData.get("marketingOptIn") === "on";
-
-    payload.idempotencyKey =
-      keyRef.current || createKey();
-
-    payload.website_url_confirm = String(
-      formData.get("website_url_confirm") ?? ""
-    );
-
-    payload.startedAt =
-      startedAt.current || Date.now();
-
-    payload.attribution = getAttribution();
-
-    setState({ phase: "submitting" });
-
+  async function submit(e: FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    if (busy.current) return;
+    const form = e.currentTarget;
+    if (!form.reportValidity()) return;
+    if (!privacy) { setStatus({ phase: "error", message: "Please accept the privacy notice.", fieldErrors: { privacyAccepted: "Required" } }); return; }
+    if (!captchaToken) { setCaptchaError("Please verify that you're not a robot."); return; }
+    if (draftTimer.current) clearTimeout(draftTimer.current);
+    busy.current = true;
+    setStatus({ phase: "submitting" });
     try {
-      const response = await fetch(endpoint, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(payload),
-      });
-
-      const data = await response
-        .json()
-        .catch(() => ({}));
-
-      if (response.ok && data.ok) {
-        if (submitEvent) {
-          track(submitEvent, { form: formName });
-        }
-
-        setState({
-          phase: "success",
-          data,
-        });
-
-        requestAnimationFrame(() => {
-          successRef.current?.focus();
-        });
-
+      const payload = {
+        ...collect(), privacyAccepted: true, marketingOptIn: false,
+        idempotencyKey: keyRef.current || crypto.randomUUID(),
+        website_url_confirm: "", startedAt: beganAt.current || Date.now(),
+        attribution: getAttribution(), recaptchaToken: captchaToken,
+      };
+      const response = await fetch(endpoint, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) });
+      const result = await response.json().catch(() => ({})) as { ok?: boolean; message?: string; fieldErrors?: Record<string, string>; code?: string; ref?: string };
+      if (!response.ok || !result.ok) {
+        setStatus({ phase: "error", message: result.message || "Unable to submit. Please try again.", fieldErrors: result.fieldErrors || {} });
+        captchaRef.current?.reset(); // single-use token, including after server errors
+        if (result.code === "RECAPTCHA_FAILED") setCaptchaError("Verification failed or expired. Please verify again.");
         return;
       }
-
-      const errors: Record<string, string> =
-        data.fieldErrors ?? {};
-
-      setState({
-        phase: "error",
-        message:
-          data.message ||
-          "Please check your details and try again.",
-        fieldErrors: errors,
-      });
-
-      requestAnimationFrame(() => {
-        const firstName = Object.keys(errors)[0];
-        const matchingInput = firstName
-          ? Array.from(form.elements).find(
-              (element) =>
-                element instanceof HTMLInputElement ||
-                element instanceof HTMLTextAreaElement ||
-                element instanceof HTMLSelectElement
-                  ? element.name === firstName
-                  : false
-            )
-          : undefined;
-
-        if (matchingInput instanceof HTMLElement) {
-          matchingInput.focus();
-        } else {
-          errorRef.current?.focus();
-        }
-      });
+      submitted.current = true;
+      window.sessionStorage.removeItem(`iiev-form-key:${formName}`);
+      if (submitEvent) track(submitEvent, { form: formName });
+      setStatus({ phase: "success", data: result });
     } catch {
-      setState({
-        phase: "error",
-        message:
-          "Unable to connect. Your details are still here. Please try again.",
-        fieldErrors: {},
-      });
-
-      requestAnimationFrame(() => {
-        errorRef.current?.focus();
-      });
-    }
+      setStatus({ phase: "error", message: "Connection issue. Your entries are still available; please retry.", fieldErrors: {} });
+      captchaRef.current?.reset();
+    } finally { busy.current = false; }
   }
 
-  /* ---------- SUCCESS ---------- */
-
-  if (state.phase === "success") {
-    return (
-      <div
-        ref={successRef}
-        tabIndex={-1}
-        role="status"
-        aria-live="polite"
-        className="rounded-[20px] border border-[#CFE8D6] bg-[#F3FBF5] p-7 outline-none sm:p-10"
-      >
-        {renderSuccess ? (
-          renderSuccess(state.data)
-        ) : (
-          <>
-            <span className="flex size-14 items-center justify-center rounded-full bg-[#23A455] text-white">
-              <Check size={28} strokeWidth={2.5} />
-            </span>
-
-            <h2 className="mt-6 text-2xl font-extrabold tracking-[-0.04em] text-[#102A1E]">
-              Enquiry Received
-            </h2>
-
-            <p className="mt-3 text-[14px] leading-7 text-[#526357]">
-              {state.data.message ??
-                "Your enquiry has been submitted successfully."}
-            </p>
-
-            {state.data.ref && (
-              <div className="mt-6 rounded-xl border border-[#DCE8DF] bg-white px-5 py-4">
-                <p className="text-[10px] font-extrabold uppercase tracking-[0.13em] text-[#71907B]">
-                  Reference Number
-                </p>
-                <p className="mt-2 break-all font-mono text-lg font-bold text-[#102A1E]">
-                  {state.data.ref}
-                </p>
-              </div>
-            )}
-
-            <Link
-              href="/"
-              className="mt-7 inline-flex items-center gap-2 text-[13px] font-bold text-[#16893F]"
-            >
-              Back to Home
-              <ArrowRight size={17} />
-            </Link>
-          </>
-        )}
-      </div>
-    );
+  if (status.phase === "success") {
+    return <div role="status" aria-live="polite" className="rounded-2xl border border-[#CAE7D2] bg-[#F1FAF3] p-7 sm:p-9">
+      {renderSuccess ? renderSuccess(status.data) : <>
+        <CheckCircle2 className="size-12 text-[#23A455]" aria-hidden="true" />
+        <h2 className="mt-5 text-2xl font-extrabold text-[#102A1E]">Submission Received</h2>
+        <p className="mt-3 text-sm leading-7 text-[#526357]">{status.data.message ?? "Your form has been submitted."}</p>
+        {status.data.ref && <p className="mt-4 rounded-lg bg-white p-4 text-sm font-bold text-[#102A1E]">Reference: {status.data.ref}</p>}
+        <Link href="/" className="mt-5 inline-flex items-center gap-2 text-sm font-bold text-[#16893F]">Home <ArrowRight size={16}/></Link>
+      </>}
+    </div>;
   }
 
-  /* ---------- FORM ---------- */
+  return <form ref={formRef} onSubmit={submit} onInput={firstInput} onChange={scheduleSave} className="min-w-0 space-y-7">
+    {status.phase === "error" && <div role="alert" className="flex gap-3 rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">
+      <AlertCircle className="size-5 shrink-0"/><div><p className="font-bold">{status.message}</p>
+      {Object.entries(fieldErrors).map(([field, message]) => <p key={field} className="mt-1 text-xs">{field}: {message}</p>)}</div></div>}
+    {/* Permission to store partial contact details is shown before the fields. */}
+    <div className="space-y-2">
+      <label className="flex items-start gap-3 rounded-xl border border-[#DCE7DE] bg-[#F7FAF7] p-4 text-xs leading-6 text-[#526357]">
+        <input type="checkbox" required checked={privacy} onChange={(e) => setPrivacy(e.target.checked)} className="mt-1 size-4 shrink-0 accent-[#23A455]"/>
+        <span>I have read the <Link target="_blank" rel="noopener noreferrer" href="/privacy-policy/" className="font-bold text-[#16893F] underline underline-offset-4">Privacy Policy</Link> and agree that my details may be saved as I complete this form and used to {consentPurpose}.</span>
+      </label>
+      {privacy && <p role="status" className="text-[11px] text-[#738678]">{draftState === "saving" ? "Saving your draft…" : draftState === "saved" ? "Draft saved. You can complete the form later in this browser." : draftState === "failed" ? "Draft autosave unavailable; you can still submit normally." : "Draft autosave is enabled."}</p>}
+    </div>
+    <div className="grid grid-cols-1 gap-x-6 gap-y-6 sm:grid-cols-2">
+      {fields.map((f, i) => {
+        if (f.kind === "heading") return <div key={`h-${i}`} className="sm:col-span-2"><h3 className="text-base font-extrabold text-[#102A1E]">{f.label}</h3>{f.text && <p className="mt-1 text-sm text-[#647468]">{f.text}</p>}</div>;
+        if (f.kind === "location") return <div key={`location-${i}`} className="grid gap-5 sm:col-span-2 sm:grid-cols-3">
+          <FieldShell id="country" label="Country" required><div className="relative"><select className={`${fieldClass} appearance-none pr-10`} name="country" id="country" value={country} onChange={(e) => setCountry(e.target.value)} required>{COUNTRIES.map((c) => <option key={c} value={c}>{c}</option>)}</select><ChevronDown size={16} className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 text-[#617166]"/></div></FieldShell>
+          <FieldShell id="state" label={country === "India" ? "State / UT" : "State / Region"} required={country === "India"}>
+            {country === "India" ? <select className={fieldClass} id="state" name="state" required defaultValue=""><option value="">Select State</option>{INDIAN_STATES.map((s) => <option key={s} value={s}>{s}</option>)}</select> : <input className={fieldClass} id="state" name="state"/>}
+          </FieldShell>
+          <FieldShell id="city" label="City" required><input className={fieldClass} id="city" name="city" required/></FieldShell>
+        </div>;
+        const error = fieldErrors[f.name];
+        const wrapper = f.kind === "textarea" || (f.kind !== "checkboxes" && f.half === false) ? "sm:col-span-2" : f.kind === "checkboxes" ? "sm:col-span-2" : !minimal && f.kind === "select" && !f.half ? "sm:col-span-2" : "";
+        if (f.kind === "checkboxes") return <fieldset key={f.name} className={wrapper}><legend className="mb-3 text-xs font-bold text-[#102A1E]">{f.label}{f.required ? " *" : ""}</legend><div className={`grid gap-3 ${f.columns === 1 ? "" : "sm:grid-cols-2"}`}>{options(f).map((opt) => <label key={opt.value} className="flex items-center gap-3 rounded-xl border border-[#DCE7DE] bg-[#FAFCFA] p-3 text-sm"><input type="checkbox" name={f.name} value={opt.value} className="accent-[#23A455]"/>{opt.label}</label>)}</div>{error && <p className="mt-2 text-xs text-red-600">{error}</p>}</fieldset>;
+        return <FieldShell key={f.name} id={f.name} label={f.label} required={f.required} hint={f.hint} error={error} className={wrapper}>
+          {f.kind === "textarea" ? <textarea id={f.name} name={f.name} placeholder={f.placeholder} required={f.required} rows={f.rows ?? 4} maxLength={f.maxLength} aria-invalid={!!error} aria-describedby={describedBy(f.name, error, f.hint)} className={`${fieldClass} !h-auto min-h-[145px] py-4`}/> :
+          f.kind === "select" ? <div className="relative"><select id={f.name} name={f.name} required={f.required} defaultValue={f.name === "country" ? "India" : ""} className={`${fieldClass} appearance-none pr-10`} aria-invalid={!!error} aria-describedby={describedBy(f.name, error, f.hint)}>
+            {f.name !== "country" && <option value="">Select {f.required ? "an option" : "(optional)"}</option>}
+            {options(f).map((opt) => <option key={opt.value} value={opt.value}>{opt.label}</option>)}
+          </select><ChevronDown size={16} className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 text-[#617166]"/></div> :
+          <input id={f.name} name={f.name} type={f.kind} placeholder={f.placeholder} required={f.required} autoComplete={f.autoComplete} maxLength={f.maxLength ?? 160} aria-invalid={!!error} aria-describedby={describedBy(f.name, error, f.hint)} className={fieldClass}/>
+          }
+        </FieldShell>;
+      })}
+    </div>
 
-  return (
-    <form
-      ref={formRef}
-      onSubmit={onSubmit}
-      onInput={onFirstInput}
-      noValidate
-      aria-describedby={
-        state.phase === "error"
-          ? `${formId}-error-summary`
-          : undefined
-      }
-      className="w-full min-w-0"
-    >
-      {state.phase === "error" && (
-        <div
-          ref={errorRef}
-          id={`${formId}-error-summary`}
-          tabIndex={-1}
-          role="alert"
-          className="mb-8 rounded-xl border border-red-200 bg-red-50 p-5 outline-none"
-        >
-          <div className="flex items-start gap-3">
-            <AlertCircle
-              size={19}
-              className="mt-0.5 shrink-0 text-red-600"
-              aria-hidden="true"
-            />
-
-            <div>
-              <p className="text-[13px] font-bold text-red-700">
-                {state.message}
-              </p>
-
-              {Object.keys(fieldErrors).length > 0 && (
-                <ul className="mt-2 list-disc pl-4 text-[12px] leading-6 text-red-600">
-                  {Object.entries(fieldErrors).map(
-                    ([field, message]) => (
-                      <li key={field}>
-                        {message}
-                      </li>
-                    )
-                  )}
-                </ul>
-              )}
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Hidden spam prevention, not a visible field */}
-      <div
-        aria-hidden="true"
-        className="absolute -left-[9999px] h-0 w-0 overflow-hidden"
-      >
-        <input
-          name="website_url_confirm"
-          tabIndex={-1}
-          autoComplete="off"
-        />
+    {/* Privacy acknowledgement is requested BEFORE any draft is transmitted. */}
+    <div className="space-y-4 border-t border-[#E5EDE6] pt-6">
+      <div><p className="mb-3 flex items-center gap-2 text-xs font-bold text-[#102A1E]"><ShieldCheck size={16} className="text-[#16893F]"/> Security verification</p>
+        <RecaptchaV2 ref={captchaRef} onChange={onCaptcha} onError={onCaptchaError}/>
+        {captchaError && <p role="alert" className="mt-2 text-xs text-red-600">{captchaError}</p>}
       </div>
-
-      {/* Exactly the fields supplied in configs.ts */}
-      <div className="grid grid-cols-1 gap-x-6 gap-y-[26px] sm:grid-cols-2">
-        {fields.map((field, index) => {
-          if (field.kind === "heading") {
-            return (
-              <div
-                key={`heading-${index}`}
-                className="border-t border-[#E6EEE8] pt-6 first:border-0 first:pt-0 sm:col-span-2"
-              >
-                <h3 className="text-[15px] font-extrabold tracking-tight text-[#102A1E]">
-                  {field.label}
-                </h3>
-
-                {field.text && (
-                  <p className="mt-2 text-[12px] leading-6 text-[#718074]">
-                    {field.text}
-                  </p>
-                )}
-              </div>
-            );
-          }
-
-          if (field.kind === "location") {
-            return (
-              <div
-                key={`location-${index}`}
-                className="grid gap-5 sm:col-span-2 sm:grid-cols-3"
-              >
-                <FieldShell
-                  id="country"
-                  label="Country"
-                  required
-                  error={fieldErrors.country}
-                >
-                  <div className="relative">
-                    <select
-                      id="country"
-                      name="country"
-                      value={country}
-                      onChange={(event) =>
-                        setCountry(event.target.value)
-                      }
-                      className={`${inputCls} cursor-pointer appearance-none pr-12`}
-                    >
-                      {COUNTRIES.map((item) => (
-                        <option key={item} value={item}>
-                          {item}
-                        </option>
-                      ))}
-                    </select>
-                    <ChevronDown
-                      size={17}
-                      className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 text-[#698471]"
-                    />
-                  </div>
-                </FieldShell>
-
-                <FieldShell
-                  id="state"
-                  label={
-                    country === "India"
-                      ? "State / UT"
-                      : "State / Region"
-                  }
-                  required={country === "India"}
-                  error={fieldErrors.state}
-                >
-                  {country === "India" ? (
-                    <SelectControl
-                      id="state"
-                      name="state"
-                      required
-                      options={INDIAN_STATES.map(
-                        (item) => ({
-                          value: item,
-                          label: item,
-                        })
-                      )}
-                      error={fieldErrors.state}
-                    />
-                  ) : (
-                    <input
-                      id="state"
-                      name="state"
-                      autoComplete="address-level1"
-                      className={inputCls}
-                    />
-                  )}
-                </FieldShell>
-
-                <FieldShell
-                  id="city"
-                  label="City"
-                  required
-                  error={fieldErrors.city}
-                >
-                  <input
-                    id="city"
-                    name="city"
-                    required
-                    maxLength={80}
-                    autoComplete="address-level2"
-                    className={inputCls}
-                  />
-                </FieldShell>
-              </div>
-            );
-          }
-
-          const error = fieldErrors[field.name];
-
-          const common = {
-            id: field.name,
-            name: field.name,
-            required: Boolean(field.required),
-            "aria-invalid": Boolean(error),
-            "aria-describedby": describedBy(
-              field.name,
-              error,
-              field.hint
-            ),
-          };
-
-          if (field.kind === "textarea") {
-            return (
-              <FieldShell
-                key={field.name}
-                id={field.name}
-                label={field.label}
-                required={field.required}
-                hint={field.hint}
-                error={error}
-                className="sm:col-span-2"
-              >
-                <textarea
-                  {...common}
-                  rows={field.rows ?? 4}
-                  maxLength={field.maxLength}
-                  placeholder={field.placeholder}
-                  className={`${inputCls} !h-auto min-h-[150px] resize-y py-4 leading-7`}
-                />
-              </FieldShell>
-            );
-          }
-
-          if (field.kind === "select") {
-            return (
-              <FieldShell
-                key={field.name}
-                id={field.name}
-                label={field.label}
-                required={field.required}
-                hint={field.hint}
-                error={error}
-                className={
-                  field.half === false
-                    ? "sm:col-span-2"
-                    : minimal
-                      ? ""
-                      : field.half
-                        ? ""
-                        : "sm:col-span-2"
-                }
-              >
-                <SelectControl
-                  id={field.name}
-                  name={field.name}
-                  required={field.required}
-                  options={getOptions(field)}
-                  defaultValue={
-                    field.name === "country"
-                      ? "India"
-                      : ""
-                  }
-                  autoComplete={
-                    field.name === "country"
-                      ? "country-name"
-                      : undefined
-                  }
-                  error={error}
-                  hint={field.hint}
-                />
-              </FieldShell>
-            );
-          }
-
-          if (field.kind === "checkboxes") {
-            return (
-              <fieldset
-                key={field.name}
-                className="sm:col-span-2"
-                aria-describedby={describedBy(
-                  field.name,
-                  error,
-                  field.hint
-                )}
-              >
-                <legend className="mb-3 text-[12px] font-extrabold text-[#102A1E]">
-                  {field.label}
-                  {field.required && (
-                    <span className="ml-1 text-red-500">
-                      *
-                    </span>
-                  )}
-                </legend>
-
-                <div
-                  className={`grid gap-2 ${
-                    field.columns === 1
-                      ? ""
-                      : "sm:grid-cols-2"
-                  }`}
-                >
-                  {getOptions(field).map((option) => (
-                    <label
-                      key={option.value}
-                      className="flex cursor-pointer items-center gap-3 rounded-xl border border-[#DCE6DE] bg-[#FAFCFA] px-4 py-3 text-[12px] font-medium text-[#405548] transition-colors has-[:checked]:border-[#23A455] has-[:checked]:bg-[#EDF8F0]"
-                    >
-                      <input
-                        type="checkbox"
-                        name={field.name}
-                        value={option.value}
-                        className="size-4 accent-[#23A455]"
-                      />
-                      {option.label}
-                    </label>
-                  ))}
-                </div>
-
-                {error && (
-                  <p
-                    id={`${field.name}-error`}
-                    role="alert"
-                    className="mt-2 text-xs text-red-600"
-                  >
-                    {error}
-                  </p>
-                )}
-              </fieldset>
-            );
-          }
-
-          return (
-            <FieldShell
-              key={field.name}
-              id={field.name}
-              label={field.label}
-              required={field.required}
-              hint={field.hint}
-              error={error}
-              className={
-                field.half === false
-                  ? "sm:col-span-2"
-                  : ""
-              }
-            >
-              <input
-                {...common}
-                type={field.kind}
-                inputMode={
-                  field.kind === "email"
-                    ? "email"
-                    : field.kind === "tel"
-                      ? "tel"
-                      : undefined
-                }
-                autoComplete={field.autoComplete}
-                placeholder={field.placeholder}
-                maxLength={field.maxLength ?? 160}
-                className={inputCls}
-              />
-            </FieldShell>
-          );
-        })}
-      </div>
-
-      {/* SUBMISSION FOOTER */}
-      <div className="mt-9 border-t border-[#E4ECE5] pt-7">
-        {minimal ? (
-          <div className="mb-6 flex items-start gap-2.5">
-            <ShieldCheck
-              size={17}
-              className="mt-0.5 shrink-0 text-[#16893F]"
-              aria-hidden="true"
-            />
-
-            <p className="text-[11px] leading-6 text-[#7A897E]">
-              By submitting, you acknowledge our{" "}
-              <Link
-                href="/privacy-policy/"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="font-bold text-[#16893F] underline underline-offset-4"
-              >
-                Privacy Policy
-              </Link>
-              . Your details will be used to{" "}
-              {consentPurpose}.
-            </p>
-          </div>
-        ) : (
-          <div className="mb-6">
-            <ConsentBlock
-              privacyError={fieldErrors.privacyAccepted}
-              purpose={consentPurpose}
-            />
-          </div>
-        )}
-
-        <button
-          type="submit"
-          disabled={submitting}
-          aria-disabled={submitting}
-          className="group relative flex min-h-[56px] w-full items-center justify-center gap-3 overflow-hidden rounded-[13px] bg-[#23A455] px-7 text-[13px] font-extrabold tracking-[0.025em] text-white shadow-[0_12px_26px_-15px_rgba(35,164,85,0.6)] transition-all duration-300 hover:-translate-y-0.5 hover:bg-[#178F44] hover:shadow-[0_15px_30px_-13px_rgba(35,164,85,0.48)] focus-visible:outline-2 focus-visible:outline-offset-3 focus-visible:outline-[#16893F] disabled:cursor-not-allowed disabled:opacity-65 disabled:hover:translate-y-0"
-        >
-          {submitting ? (
-            <>
-              <LoaderCircle
-                size={19}
-                className="animate-spin"
-                aria-hidden="true"
-              />
-              Submitting...
-            </>
-          ) : (
-            <>
-              {submitLabel}
-              <ArrowRight
-                size={18}
-                aria-hidden="true"
-                className="transition-transform group-hover:translate-x-1"
-              />
-            </>
-          )}
-        </button>
-
-        <p className="mt-4 text-center text-[11px] leading-5 text-[#91A094]">
-          Fields marked * are required.
-        </p>
-      </div>
-    </form>
-  );
+      <button type="submit" disabled={loading || !captchaToken || !privacy} className="group flex min-h-14 w-full items-center justify-center gap-3 rounded-xl bg-[#23A455] px-7 text-sm font-extrabold text-white transition-colors hover:bg-[#16893F] disabled:cursor-not-allowed disabled:opacity-55">
+        {loading ? <><LoaderCircle size={19} className="animate-spin"/> Submitting…</> : <>{submitLabel} <ArrowRight size={18} className="transition-transform group-hover:translate-x-1"/></>}
+      </button>
+      <p className="text-center text-[11px] text-[#829387]">* Required fields. Secure verification is required to submit.</p>
+    </div>
+  </form>;
 }

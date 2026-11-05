@@ -1,73 +1,109 @@
 "use client";
 
+import { useRef, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
-import { motion, useReducedMotion } from "framer-motion";
-import { ArrowUpRight, CalendarDays, MapPin } from "lucide-react";
+import { motion, useReducedMotion, useScroll, useSpring, useTransform } from "framer-motion";
+import { ArrowRight } from "lucide-react";
+import { Arc, Chars, Lines } from "@/components/home/motion-kit";
 
 const ease = [0.22, 1, 0.36, 1] as const;
 
-/** The decorative circuit motif is intentionally an inline SVG: no external SVG or font dependency. */
-function MobilityMotif() {
-  const reduced = useReducedMotion();
-  return (
-    <svg aria-hidden="true" focusable="false" viewBox="0 0 1200 580" preserveAspectRatio="xMidYMid slice" className="pointer-events-none absolute inset-0 h-full w-full opacity-70">
-      <defs>
-        <linearGradient id="iiev-motif" x1="0" y1="0" x2="1" y2="1">
-          <stop offset="0" stopColor="#23A455" stopOpacity="0.30" />
-          <stop offset="1" stopColor="#23A455" stopOpacity="0.04" />
-        </linearGradient>
-      </defs>
-      <motion.g fill="none" stroke="url(#iiev-motif)" strokeWidth="1.2" initial={false} animate={reduced ? {} : { x: [0, 12, 0], y: [0, -8, 0] }} transition={{ duration: 22, ease: "easeInOut", repeat: Infinity }}>
-        <circle cx="600" cy="245" r="220" />
-        <circle cx="600" cy="245" r="295" />
-        <circle cx="600" cy="245" r="370" />
-        <path d="M-80 370 H240 l64 -64 h94 M1200 150 H990 l-70 70 H780" />
-        <path d="M0 525 H270 l82 -82 h92 M1200 485 H970 l-60 -60 H810" />
-      </motion.g>
-      <g fill="#23A455" opacity=".52"><circle cx="398" cy="306" r="3.5"/><circle cx="920" cy="220" r="3.5"/><circle cx="444" cy="443" r="3.5"/></g>
-    </svg>
-  );
-}
+const facts = [
+  { label: "Venue", value: "Auto Cluster Exhibition Centre, Pune" },
+  { label: "Organised by", value: "Futurex Group" },
+];
 
 export function CompactHero() {
   const reduced = useReducedMotion();
-  const enter = (delay: number) => ({
-    initial: reduced ? false : { opacity: 0, y: 18 },
+  const ref = useRef<HTMLElement>(null);
+  const [videoReady, setVideoReady] = useState(false);
+
+  // The footage moves a little slower than the page; the copy fades as you leave.
+  // Both ride a spring so scrolling feels smooth, not steppy.
+  const { scrollYProgress } = useScroll({ target: ref, offset: ["start start", "end start"] });
+  const smooth = useSpring(scrollYProgress, { stiffness: 90, damping: 26, mass: 0.35 });
+  const mediaY = useTransform(smooth, [0, 1], ["0%", "14%"]);
+  const copyOpacity = useTransform(smooth, [0, 0.7], [1, 0]);
+
+  const fade = (delay: number) => ({
+    initial: reduced ? false : { opacity: 0, y: 20 },
     animate: { opacity: 1, y: 0 },
-    transition: { duration: reduced ? 0 : 0.65, delay: reduced ? 0 : delay, ease },
+    transition: { duration: 0.8, delay: reduced ? 0 : delay, ease },
   });
 
   return (
-    <section aria-labelledby="home-hero-title" className="relative isolate overflow-hidden bg-brand-night text-white">
-      <MobilityMotif />
-      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_50%_0%,rgba(35,164,85,0.16),transparent_62%)]" />
-      <div className="relative mx-auto w-full max-w-7xl px-5 pb-7 pt-12 text-center sm:px-8 sm:pb-9 sm:pt-14 lg:px-10 lg:pt-16">
-        <motion.p {...enter(0)} className="mx-auto inline-flex items-center gap-2 rounded-full border border-brand/45 bg-brand/10 px-4 py-2 text-[10px] font-bold uppercase tracking-[0.14em] text-white/90 sm:text-[11px]">
-          <span className="h-1.5 w-1.5 rounded-full bg-brand" /> 9th India International EV Show
-        </motion.p>
-        <motion.h1 {...enter(0.08)} id="home-hero-title" className="mx-auto mt-5 max-w-4xl text-[clamp(2.25rem,5.2vw,4.5rem)] font-extrabold leading-[1.07] tracking-[-0.055em]">
-          Where electric mobility <span className="text-brand">meets business.</span>
-        </motion.h1>
-        <motion.p {...enter(0.16)} className="mx-auto mt-4 max-w-2xl text-[13px] leading-6 text-white/75 sm:text-[15px] sm:leading-7">
-          Explore electric vehicles, components, charging infrastructure and technology. Connect with manufacturers, suppliers and industry professionals in Pune.
-        </motion.p>
-        <motion.div {...enter(0.21)} className="mt-5 flex flex-wrap items-center justify-center gap-x-6 gap-y-2 text-[11px] font-semibold text-white/90 sm:text-[13px]">
-          <span className="inline-flex items-center gap-2"><CalendarDays size={16} className="text-brand" aria-hidden="true"/>14–16 October 2027</span>
-          <span className="inline-flex items-center gap-2"><MapPin size={16} className="text-brand" aria-hidden="true"/>Auto Cluster Exhibition Centre, Pune</span>
-        </motion.div>
-        <motion.div {...enter(0.27)} className="mt-6 flex flex-wrap justify-center gap-3">
-          <Link href="#participate" className="group inline-flex min-h-11 items-center gap-2 rounded-full bg-brand px-6 py-3 text-xs font-bold text-white transition-colors hover:bg-brand-dark focus-visible:outline-offset-4">Exhibition enquiries <ArrowUpRight size={16} aria-hidden="true" className="transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5" /></Link>
-          <Link href="#show-sectors" className="inline-flex min-h-11 items-center rounded-full border border-white/30 bg-white/5 px-6 py-3 text-xs font-bold text-white transition-colors hover:bg-white/15">Explore the show</Link>
-        </motion.div>
-        <motion.div {...enter(0.32)} className="relative mx-auto mt-8 max-w-5xl overflow-hidden rounded-[18px] border border-white/20 shadow-[0_15px_40px_-25px_rgba(0,0,0,.65)] sm:mt-9">
-          <div className="relative h-[145px] w-full sm:h-[190px] lg:h-[205px]">
-            <Image src="/images/industry-floor.webp" alt="Visitors and exhibitors meeting on the IIEV exhibition floor in 2026" fill priority sizes="(max-width:1024px) 100vw, 1024px" className="object-cover object-center" />
-            <div className="absolute inset-0 bg-gradient-to-t from-brand-night/60 via-transparent to-brand-night/10" />
-            <div className="absolute bottom-3 left-4 rounded-md bg-brand-night/80 px-3 py-1.5 text-[10px] font-semibold text-white backdrop-blur-sm sm:bottom-4 sm:left-5">From the 2026 exhibition</div>
+    <section ref={ref} aria-labelledby="home-hero-title" className="relative isolate flex min-h-[86svh] flex-col justify-end overflow-hidden bg-brand-night text-white">
+      {/* Footage. The still photo is the poster and the reduced-motion fallback. */}
+      <motion.div aria-hidden="true" className="absolute inset-0 -z-20 scale-110" style={reduced ? undefined : { y: mediaY }}>
+        {reduced ? (
+          <Image src="/images/industry-floor.webp" alt="" fill priority sizes="100vw" className="object-cover" />
+        ) : (
+          <video
+            className={`h-full w-full object-cover transition-opacity duration-1000 ${videoReady ? "opacity-100" : "opacity-0"}`}
+            autoPlay muted loop playsInline preload="auto"
+            poster="/images/industry-floor.webp"
+            onCanPlay={() => setVideoReady(true)}
+          >
+            <source src="/videos/hero-bg.webm" type="video/webm" />
+            <source src="/videos/hero-bg.mp4" type="video/mp4" />
+          </video>
+        )}
+      </motion.div>
+      {/* A touch of brand green over the footage so the whole frame leans green, not blue */}
+      <div aria-hidden="true" className="absolute inset-0 -z-10 bg-brand-deep/30 mix-blend-multiply" />
+      <div aria-hidden="true" className="absolute inset-0 -z-10 bg-gradient-to-r from-brand-night/90 via-brand-night/55 to-brand-night/20" />
+      <div aria-hidden="true" className="absolute inset-0 -z-10 bg-gradient-to-t from-brand-night via-transparent to-brand-night/40" />
+
+      <Arc delay={0.2} opacity={0.95} className="absolute -right-[16%] -top-[34%] -z-10 aspect-square w-[min(66vw,780px)]" />
+
+      <motion.div style={reduced ? undefined : { opacity: copyOpacity }} className="relative mx-auto w-full max-w-7xl px-5 pb-8 pt-36 sm:px-8 lg:px-10">
+        <div className="grid items-end gap-10 lg:grid-cols-12">
+          <div className="lg:col-span-8">
+            <motion.p {...fade(0.05)} className="inline-flex items-center gap-2 text-sm font-semibold text-white/90">
+              {/* The only yellow on the page, one small bolt. Swap text-[#F9C900] for text-brand to remove it. */}
+              <svg aria-hidden="true" viewBox="0 0 24 24" className="h-4 w-4 text-[#F9C900]" fill="currentColor"><path d="M14.2 1.5 4.5 14.1h6.1L8.9 22.5l10.6-13.2h-6.3z" /></svg>
+              9th India International EV Show
+            </motion.p>
+            <Lines
+              as="h1"
+              id="home-hero-title"
+              delay={0.1}
+              className="mt-5 max-w-3xl text-[clamp(2.6rem,6.2vw,5.4rem)] font-light leading-[1.03] tracking-[-0.035em] [text-shadow:0_2px_30px_rgba(0,20,51,0.35)]"
+              lines={["Where electric mobility", <span key="b" className="font-bold text-brand">meets business.</span>]}
+            />
+            <motion.p {...fade(0.55)} className="mt-6 max-w-md text-sm leading-7 text-white/80 sm:text-base sm:leading-8">
+              Vehicles, components, charging and technology, with the people who build them.
+            </motion.p>
+            <motion.div {...fade(0.7)} className="mt-8 flex flex-wrap items-center gap-x-8 gap-y-4">
+              <Link href="#participate" className="group inline-flex min-h-12 items-center gap-4 rounded-full bg-brand py-2 pl-6 pr-2 text-sm font-bold text-white transition duration-300 hover:bg-brand-dark active:scale-[0.98] focus-visible:outline-offset-4">
+                Exhibition enquiries
+                <span className="grid h-8 w-8 place-items-center rounded-full bg-white text-brand-dark transition-transform duration-300 group-hover:scale-105">
+                  <ArrowRight size={16} aria-hidden="true" className="-rotate-45 transition-transform duration-300 group-hover:rotate-0" />
+                </span>
+              </Link>
+              <Link href="#show-sectors" className="text-sm font-bold text-white underline decoration-white/40 underline-offset-[6px] transition-colors duration-300 hover:decoration-brand focus-visible:outline-offset-4">
+                Explore the show
+              </Link>
+            </motion.div>
           </div>
-        </motion.div>
-      </div>
+
+          {/* The date, set as type */}
+          <div className="lg:col-span-4 lg:text-right">
+            <Chars text="14–16" delay={0.35} className="text-[clamp(4.5rem,11vw,9rem)] font-bold leading-[0.9] tracking-[-0.06em]" />
+            <motion.p {...fade(0.85)} className="mt-3 text-lg font-semibold sm:text-xl">October 2027</motion.p>
+          </div>
+        </div>
+
+        <motion.dl {...fade(1)} className="mt-10 grid border-t border-white/25 sm:grid-cols-2 lg:max-w-xl">
+          {facts.map((f) => (
+            <div key={f.label} className="py-4 sm:pr-6">
+              <dt className="text-xs text-white/60">{f.label}</dt>
+              <dd className="mt-1 text-sm font-semibold">{f.value}</dd>
+            </div>
+          ))}
+        </motion.dl>
+      </motion.div>
     </section>
   );
 }
