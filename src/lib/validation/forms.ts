@@ -12,9 +12,38 @@ export const phoneField = z.string().trim().max(24)
     message: "Enter a valid mobile number (Indian 10-digit, or international with + country code)",
   });
 
-const optionalUrl = z.string().trim().max(200).optional()
-  .transform((v) => (v ? (/^https?:\/\//i.test(v) ? v : `https://${v}`) : undefined))
-  .refine((v) => !v || /^https?:\/\/[^\s/$.?#].[^\s]*$/i.test(v), { message: "Enter a valid website" });
+
+const optionalUrl = z
+  .string()
+  .trim()
+  .max(200)
+  .optional()
+  .transform((value) => {
+    if (!value) return undefined;
+
+    return /^https?:\/\//i.test(value)
+      ? value
+      : `https://${value}`;
+  })
+  .refine(
+    (value) => {
+      if (!value) return true;
+
+      try {
+        const url = new URL(value);
+
+        return (
+          ["http:", "https:"].includes(url.protocol) &&
+          url.hostname.includes(".")
+        );
+      } catch {
+        return false;
+      }
+    },
+    {
+      message: "Enter a valid website",
+    }
+  );
 
 const sectorValues = SECTOR_OPTIONS.map((s) => s.value) as [string, ...string[]];
 
