@@ -19,6 +19,10 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 export const maxDuration = 30;
 
+const CONFIRMATION = "Your visitor registration has been received successfully.";
+
+// Final form save must not wait for Google Sheets or organiser SMTP delivery.
+// The existing scheduled website-sync worker retries pending deliveries.
 function queueDelivery(submissionKey: string): void {
   after(async () => {
     try {
@@ -32,14 +36,11 @@ function queueDelivery(submissionKey: string): void {
   });
 }
 
-function registrationMessage(status: string, badgeAccess?: string): string {
-  const approved = status === "approved" || status === "checked_in";
-  if (!approved) return "Your visitor registration has been received for review.";
-  return badgeAccess
-    ? "Registration confirmed. Your badge is available below."
-    : "Registration confirmed. Retrieve your badge from the website.";
-}
-
+/**
+ * Visitor intake ONLY: MongoDB Visitor + WebsiteDraft + organiser Sheets/email.
+ * No visitor acknowledgement, QR code, badge creation or badge PDF.
+ * The public submission guard performs rate limiting, Zod and reCAPTCHA v2.
+ */
 export async function POST(req: Request): Promise<Response> {
   return handlePublicSubmission(
     req,
@@ -48,11 +49,13 @@ export async function POST(req: Request): Promise<Response> {
       rateKey: "visitor",
       limit: 6,
       windowSec: 600,
-      // Retry is permitted only for an already-saved FINAL Visitor.
+      // Only an ALREADY FINALISED Visitor record may bypass a consumed captcha.
+      // An autosaved WebsiteDraft alone never qualifies.
       existingFinalSubmission: async (raw) => {
         const saved = await findExistingVisitorSubmission(
           raw.idempotencyKey,
           raw.email,
+          { includeBadgeAccess: false },
         );
         if (!saved || saved.kind === "already_registered") return null;
 
@@ -87,22 +90,17 @@ export async function POST(req: Request): Promise<Response> {
 
         queueDelivery(String(raw.idempotencyKey));
         return NextResponse.json(
-          {
-            ok: true,
-            ref: saved.ref,
-            status: saved.status,
-            badgeAccess: saved.badgeAccess,
-            message: registrationMessage(saved.status, saved.badgeAccess),
-          },
+          { ok: true, ref: saved.ref, status: saved.status, message: CONFIRMATION },
           { status: 200, headers: { "Cache-Control": "no-store" } },
         );
       },
     },
     async (data, ip) => {
       try {
-        // Requires updated lib/services/visitors.ts accepting this option.
-        // Avoids sending the organiser emails twice via the legacy job queue.
+        // Crucial: do not generate or email a badge for a website visitor.
+        // Also avoid the legacy job queue, which can email visitors.
         const saved = await registerVisitor(data, ip, {
+          issueBadge: false,
           skipLegacyPipeline: true,
         });
 
@@ -110,8 +108,8 @@ export async function POST(req: Request): Promise<Response> {
           return apiError(
             409,
             "ALREADY_REGISTERED",
-            "This email is already registered for this edition. Please retrieve your existing registration.",
-            { email: "Already registered; use badge retrieval." },
+            "This email already has a submitted registration for this edition.",
+            { email: "This email is already registered." },
           );
         }
 
@@ -126,13 +124,7 @@ export async function POST(req: Request): Promise<Response> {
 
         queueDelivery(data.idempotencyKey);
         return NextResponse.json(
-          {
-            ok: true,
-            ref: saved.ref,
-            status: saved.status,
-            badgeAccess: saved.badgeAccess,
-            message: registrationMessage(saved.status, saved.badgeAccess),
-          },
+          { ok: true, ref: saved.ref, status: saved.status, message: CONFIRMATION },
           {
             status: saved.kind === "created" ? 201 : 200,
             headers: { "Cache-Control": "no-store" },

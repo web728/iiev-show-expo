@@ -48,13 +48,14 @@ async function findBySubmissionKey(key: string): Promise<VisitorLookup | null> {
 export async function findExistingVisitorSubmission(
   key: unknown,
   email: unknown,
+  options: { includeBadgeAccess?: boolean } = {},
 ): Promise<RegisterResult | null> {
   if (typeof key !== "string" || !/^[A-Za-z0-9_-]{8,100}$/.test(key) ||
       typeof email !== "string") return null;
   await connectDb();
   const visitor = await findBySubmissionKey(key);
   if (!visitor || visitor.email.toLowerCase() !== email.trim().toLowerCase()) return null;
-  return duplicateResult(visitor, email);
+  return duplicateResult(visitor, email, options.includeBadgeAccess !== false);
 }
 
 async function safeVisitorPipeline(id: unknown, autoApprove: boolean): Promise<void> {
@@ -89,13 +90,17 @@ function sameIdentity(record: VisitorLookup, email: string): void {
   }
 }
 
-async function duplicateResult(visitor: VisitorLookup, email: string): Promise<RegisterResult> {
+async function duplicateResult(
+  visitor: VisitorLookup,
+  email: string,
+  includeBadgeAccess = true,
+): Promise<RegisterResult> {
   sameIdentity(visitor, email);
   const badgeActive =
     (visitor.status === "approved" || visitor.status === "checked_in") &&
     !visitor.badgeRevokedAt &&
     (visitor.badgeVersion ?? 0) > 0;
-  const badgeAccess = badgeActive
+  const badgeAccess = includeBadgeAccess && badgeActive
     ? await safeBadgeAccess(String(visitor._id), visitor.badgeVersion!)
     : undefined;
   return {
@@ -113,7 +118,7 @@ async function duplicateResult(visitor: VisitorLookup, email: string): Promise<R
  */
 export async function registerVisitor(
   input: VisitorRegistrationInput, ip: string,
-  options: { skipLegacyPipeline?: boolean } = {},
+  options: { skipLegacyPipeline?: boolean; issueBadge?: boolean } = {},
 ): Promise<RegisterResult> {
   if (!/^[A-Za-z0-9_-]{8,100}$/.test(input.idempotencyKey)) {
     throw new VisitorError("INVALID_KEY", "Invalid submission key.");
@@ -125,7 +130,7 @@ export async function registerVisitor(
   // changes: the existing visitor keeps their original event edition.
   const existing = await findBySubmissionKey(input.idempotencyKey);
   if (existing) {
-    const result = await duplicateResult(existing, email);
+    const result = await duplicateResult(existing, email, options.issueBadge !== false);
     // Repair queue problems on retry (queue layer must have job deduplication).
     if (!options.skipLegacyPipeline) {
       await safeVisitorPipeline(existing._id, existing.status === "approved" || existing.status === "checked_in");
@@ -143,7 +148,9 @@ export async function registerVisitor(
     return { kind: "already_registered" };
   }
 
-  const autoApprove = edition.registration.approvalMode === "auto";
+  // Public visitor form can disable badges even when the edition auto-approves.
+  // This prevents issueBadgeToken() and APP_ENCRYPTION_KEY from being used.
+  const autoApprove = options.issueBadge !== false && edition.registration.approvalMode === "auto";
   const status: VisitorStatus = autoApprove ? "approved" : "pending_review";
 
   for (let attempt = 0; attempt < 4; attempt += 1) {
@@ -192,7 +199,7 @@ export async function registerVisitor(
       if (duplicate?.code === 11000) {
         const winner = await findBySubmissionKey(input.idempotencyKey);
         if (winner) {
-          const result = await duplicateResult(winner, email);
+          const result = await duplicateResult(winner, email, options.issueBadge !== false);
           if (!options.skipLegacyPipeline) {
             await safeVisitorPipeline(winner._id, winner.status === "approved" || winner.status === "checked_in");
           }
