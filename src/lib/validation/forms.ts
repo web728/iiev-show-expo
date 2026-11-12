@@ -1,59 +1,46 @@
 import { z } from "zod";
 import { SECTOR_OPTIONS } from "@/config/options";
 
-// Shared field rules. Server-side validation is authoritative; the client
-// reuses the same schemas for inline feedback.
-
 const trimmed = (max: number) => z.string().trim().max(max);
 const required = (label: string, max = 120) => trimmed(max).min(1, `${label} is required`);
 
 export const nameField = required("Full name", 100).min(2, "Please enter your full name");
 export const emailField = z.string().trim().toLowerCase().max(160).email("Enter a valid email address");
-
-// India: 10 digits starting 6–9, optional +91/0. International: E.164-ish 8–15 digits.
-export const phoneField = z
-  .string()
-  .trim()
-  .max(24)
+export const phoneField = z.string().trim().max(24)
   .transform((v) => v.replace(/[\s\-().]/g, ""))
   .refine((v) => /^(\+91|0)?[6-9]\d{9}$/.test(v) || /^\+[1-9]\d{7,14}$/.test(v), {
     message: "Enter a valid mobile number (Indian 10-digit, or international with + country code)",
   });
 
-const optionalUrl = z
-  .string()
-  .trim()
-  .max(200)
-  .optional()
+const optionalUrl = z.string().trim().max(200).optional()
   .transform((v) => (v ? (/^https?:\/\//i.test(v) ? v : `https://${v}`) : undefined))
   .refine((v) => !v || /^https?:\/\/[^\s/$.?#].[^\s]*$/i.test(v), { message: "Enter a valid website" });
 
 const sectorValues = SECTOR_OPTIONS.map((s) => s.value) as [string, ...string[]];
 
+// Checkbox-free forms: never infer affirmative consent from a Submit click.
+// This legacy field remains for compatibility with existing Mongo models and APIs.
+// Ignore any client-provided true value rather than recording an invented opt-in.
 export const consentFields = {
-  privacyAccepted: z.literal(true, { message: "Please accept the privacy notice to continue" }),
-  marketingOptIn: z.boolean().default(false),
+  privacyAccepted: z.unknown().optional().transform(() => false),
+  marketingOptIn: z.unknown().optional().transform(() => false),
 };
 
-export const attributionSchema = z
-  .object({
-    referrer: trimmed(500).optional(),
-    landingPage: trimmed(500).optional(),
-    utmSource: trimmed(100).optional(),
-    utmMedium: trimmed(100).optional(),
-    utmCampaign: trimmed(150).optional(),
-    utmTerm: trimmed(150).optional(),
-    utmContent: trimmed(150).optional(),
-  })
-  .partial()
-  .optional();
+export const attributionSchema = z.object({
+  referrer: trimmed(500).optional(),
+  landingPage: trimmed(500).optional(),
+  utmSource: trimmed(100).optional(),
+  utmMedium: trimmed(100).optional(),
+  utmCampaign: trimmed(150).optional(),
+  utmTerm: trimmed(150).optional(),
+  utmContent: trimmed(150).optional(),
+}).partial().optional();
 
 const meta = {
   idempotencyKey: z.string().uuid("Invalid submission key"),
   attribution: attributionSchema,
-  // Honeypot: must be empty. Bots that fill every field are silently rejected.
   website_url_confirm: z.string().max(0).optional(),
-  startedAt: z.number().int().optional(), // ms timestamp when form rendered (bot timing check)
+  startedAt: z.number().int().optional(),
 };
 
 const location = {
@@ -161,8 +148,7 @@ export const contactSchema = z.object({
   company: trimmed(160).optional(),
   topic: required("Topic", 60),
   message: required("Message", 3000).min(10, "Please enter a message"),
-  privacyAccepted: z.literal(true, { message: "Please accept the privacy notice to continue" }),
-  marketingOptIn: z.boolean().default(false),
+  ...consentFields,
   ...meta,
 });
 
@@ -172,7 +158,6 @@ export const badgeRetrieveSchema = z.object({
 });
 
 export type FieldErrors = Record<string, string>;
-
 export function flattenZod(error: z.ZodError): FieldErrors {
   const out: FieldErrors = {};
   for (const issue of error.issues) {

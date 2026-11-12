@@ -292,7 +292,9 @@ export function SmartForm({ endpoint, fields, submitLabel, consentPurpose, formN
 
         setStatus({ phase: "error", message: result.message || "Unable to submit. Please try again.", fieldErrors: result.fieldErrors || {} });
 
-        captchaRef.current?.reset(); // single-use token, including after server errors
+        // Validation (422) happens before server CAPTCHA verification; token remains usable.
+        // Other error responses may follow verification, so clear their single-use token.
+        if (response.status !== 422) captchaRef.current?.reset();
 
         if (result.code === "RECAPTCHA_FAILED") setCaptchaError("Verification failed or expired. Please verify again.");
 

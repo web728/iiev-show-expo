@@ -1,7 +1,7 @@
 "use client";
 
 import Script from "next/script";
-import { forwardRef, useEffect, useImperativeHandle, useRef, useState } from "react";
+import { forwardRef, useCallback, useEffect, useImperativeHandle, useRef, useState } from "react";
 
 type RecaptchaApi = {
   render: (node: HTMLElement, config: {
@@ -11,7 +11,7 @@ type RecaptchaApi = {
     "expired-callback": () => void;
     "error-callback": () => void;
   }) => number;
-  reset: (widgetId: number) => void;
+  reset: (id: number) => void;
 };
 
 declare global {
@@ -21,51 +21,68 @@ declare global {
 export type RecaptchaHandle = { reset: () => void };
 
 export const RecaptchaV2 = forwardRef<RecaptchaHandle, {
-  onChange: (value: string) => void;
+  onChange: (token: string) => void;
   onError?: (message: string) => void;
 }>(function RecaptchaV2({ onChange, onError }, ref) {
-  const key = process.env.NEXT_PUBLIC_RECAPTCHA_SITE_KEY;
+  const siteKey = process.env.NEXT_PUBLIC_RECAPTCHA_SITE_KEY;
   const holder = useRef<HTMLDivElement>(null);
   const widget = useRef<number | null>(null);
-  const [scriptLoaded, setScriptLoaded] = useState(false);
+  const changeRef = useRef(onChange);
+  const errorRef = useRef(onError);
+  const [ready, setReady] = useState(false);
+  const [loadFailed, setLoadFailed] = useState(false);
+
+  useEffect(() => { changeRef.current = onChange; errorRef.current = onError; }, [onChange, onError]);
 
   useImperativeHandle(ref, () => ({
-    reset: () => {
+    reset() {
       if (widget.current !== null && window.grecaptcha) {
-        window.grecaptcha.reset(widget.current);
+        try { window.grecaptcha.reset(widget.current); } catch { /* script unmounted */ }
       }
-      onChange("");
+      changeRef.current("");
     },
-  }), [onChange]);
+  }), []);
 
-  useEffect(() => {
-    if (!scriptLoaded || !key || !holder.current || !window.grecaptcha || widget.current !== null) return;
+  const renderWidget = useCallback(() => {
+    if (!siteKey || !ready || !holder.current || !window.grecaptcha || widget.current !== null) return;
     try {
       widget.current = window.grecaptcha.render(holder.current, {
-        sitekey: key,
+        sitekey: siteKey,
         theme: "light",
-        callback: (token) => onChange(token),
-        "expired-callback": () => { onChange(""); onError?.("Verification expired. Please verify again."); },
-        "error-callback": () => { onChange(""); onError?.("Google verification could not load. Please retry."); },
+        callback: (token) => changeRef.current(token),
+        "expired-callback": () => {
+          changeRef.current("");
+          errorRef.current?.("Verification expired. Please verify again.");
+        },
+        "error-callback": () => {
+          changeRef.current("");
+          errorRef.current?.("Verification failed to load. Please retry.");
+        },
       });
+      setLoadFailed(false);
     } catch {
-      onError?.("Google verification could not be displayed.");
+      setLoadFailed(true);
+      errorRef.current?.("Verification widget could not be displayed.");
     }
-  }, [key, scriptLoaded, onChange, onError]);
+  }, [ready, siteKey]);
 
-  if (!key) {
-    return <p role="alert" className="text-sm text-red-700">reCAPTCHA is not configured. Please contact the organiser.</p>;
-  }
+  useEffect(() => { renderWidget(); }, [renderWidget]);
+
+  if (!siteKey) return <p role="alert" className="text-sm text-red-700">reCAPTCHA site key is missing.</p>;
 
   return (
     <div className="min-w-0 space-y-2">
       <Script
         src="https://www.google.com/recaptcha/api.js?render=explicit"
         strategy="afterInteractive"
-        onReady={() => setScriptLoaded(true)}
-        onLoad={() => setScriptLoaded(true)}
+        onReady={() => setReady(true)}
+        onError={() => {
+          setLoadFailed(true);
+          errorRef.current?.("Google verification script was blocked or unavailable.");
+        }}
       />
-      <div className="max-w-full overflow-x-auto" ref={holder} />
+      <div ref={holder} className="max-w-full overflow-x-auto" />
+      {loadFailed ? <p role="alert" className="text-xs text-red-600">Google verification did not load. Check your connection and try refreshing.</p> : null}
     </div>
   );
 });
