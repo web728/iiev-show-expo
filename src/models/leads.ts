@@ -3,7 +3,6 @@ import { defineModel } from "./_helpers";
 
 export const LEAD_TYPES = ["stall", "sponsorship", "partner", "speaker", "delegate", "contact", "media"] as const;
 export type LeadType = (typeof LEAD_TYPES)[number];
-
 export const LEAD_TYPE_LABELS: Record<LeadType, string> = {
   stall: "Stall enquiry",
   sponsorship: "Sponsorship enquiry",
@@ -53,17 +52,23 @@ const NoteSchema = new Schema(
   { _id: true },
 );
 const TaskSchema = new Schema(
-  { title: String, dueAt: Date, assignee: String, done: { type: Boolean, default: false }, by: String, at: { type: Date, default: Date.now } },
+  {
+    title: String,
+    dueAt: Date,
+    assignee: String,
+    done: { type: Boolean, default: false },
+    by: String,
+    at: { type: Date, default: Date.now },
+  },
   { _id: true },
 );
 
 const LeadSchema = new Schema(
   {
-    ref: { type: String, required: true, unique: true }, // human-friendly reference, e.g. ST-27-8K2F9Q
+    ref: { type: String, required: true, unique: true },
     idempotencyKey: { type: String, required: true, unique: true },
     type: { type: String, enum: LEAD_TYPES, required: true, index: true },
     edition: { type: String, required: true, index: true },
-    // Common contact fields
     fullName: { type: String, required: true },
     email: { type: String, required: true, lowercase: true, index: true },
     phone: String,
@@ -73,17 +78,17 @@ const LeadSchema = new Schema(
     state: String,
     country: String,
     website: String,
-    // Type-specific payload (validated by zod per type before insert)
-    details: { type: Schema.Types.Mixed, default: {} },
-    // Consent
-    privacyAccepted: { type: Boolean, required: true },
+    details: { type: Schema.Types.Mixed, default: () => ({}) },
+    // Explicitly false for checkbox-free public forms. No invented consent.
+    privacyAccepted: { type: Boolean, required: true, default: false },
     marketingOptIn: { type: Boolean, default: false },
-    // CRM
     stage: { type: String, enum: LEAD_STAGES, default: "new", index: true },
     assignedTo: { type: String, index: true },
     notes: [NoteSchema],
     tasks: [TaskSchema],
-    stageHistory: [{ stage: String, by: String, at: { type: Date, default: Date.now }, _id: false }],
+    stageHistory: [
+      { stage: { type: String, enum: LEAD_STAGES }, by: String, at: { type: Date, default: Date.now }, _id: false },
+    ],
     attribution: attributionSchema,
     integrations: { type: integrationStateSchema, default: () => ({}) },
     ipHash: String,
@@ -94,14 +99,13 @@ LeadSchema.index({ type: 1, edition: 1, createdAt: -1 });
 LeadSchema.index({ email: 1, type: 1, edition: 1 });
 export const Lead = defineModel("Lead", LeadSchema);
 
-// ---- Visitors & badges ---------------------------------------------------
-
+// ---- Visitors and badges ----
 export const VISITOR_STATUSES = ["submitted", "validated", "pending_review", "approved", "rejected", "cancelled", "checked_in"] as const;
 export type VisitorStatus = (typeof VISITOR_STATUSES)[number];
 
 const VisitorSchema = new Schema(
   {
-    ref: { type: String, required: true, unique: true }, // e.g. VS-27-4H7K2M (printed on badge)
+    ref: { type: String, required: true, unique: true },
     idempotencyKey: { type: String, required: true, unique: true },
     edition: { type: String, required: true, index: true },
     fullName: { type: String, required: true },
@@ -109,20 +113,21 @@ const VisitorSchema = new Schema(
     phone: { type: String, required: true },
     company: { type: String, required: true },
     designation: { type: String, required: true },
-    industry: { type: String, required: true },
+    // FIX: Matches visitorRegistrationSchema; field is OPTIONAL on the form.
+    industry: String,
     city: String,
     state: String,
-    country: { type: String, default: "India" },
+    country: { type: String, required: true },
+    // Retain legacy fields for existing registrations and admin views.
     reasonForVisit: String,
     sectorInterests: [String],
-    privacyAccepted: { type: Boolean, required: true },
+    privacyAccepted: { type: Boolean, required: true, default: false },
     marketingOptIn: { type: Boolean, default: false },
     status: { type: String, enum: VISITOR_STATUSES, default: "submitted", index: true },
-    statusHistory: [{ status: String, by: String, reason: String, at: { type: Date, default: Date.now }, _id: false }],
-    // Badge token: opaque random value; only its SHA-256 hash is stored.
+    statusHistory: [
+      { status: { type: String, enum: VISITOR_STATUSES }, by: String, reason: String, at: { type: Date, default: Date.now }, _id: false },
+    ],
     badgeTokenHash: { type: String, index: true, sparse: true, select: false },
-    // Same token AES-256-GCM encrypted at rest so the badge PDF can be re-rendered
-    // without rotating the QR. Rotation (reissue) replaces both.
     badgeTokenEnc: { type: String, select: false },
     badgeIssuedAt: Date,
     badgeVersion: { type: Number, default: 0 },
@@ -135,7 +140,6 @@ const VisitorSchema = new Schema(
   },
   { timestamps: true },
 );
-// One registration per email per edition (dedupe rule; see docs/FORM_WORKFLOWS.md)
 VisitorSchema.index({ edition: 1, email: 1 }, { unique: true });
 VisitorSchema.index({ edition: 1, createdAt: -1 });
 VisitorSchema.index({ fullName: "text", company: "text", email: "text" });
@@ -157,14 +161,11 @@ const CheckInSchema = new Schema(
 CheckInSchema.index({ edition: 1, createdAt: -1 });
 export const CheckIn = defineModel("CheckIn", CheckInSchema);
 
-// ---- Integration jobs (Sheets / email) -----------------------------------
-
 const IntegrationJobSchema = new Schema(
   {
     kind: { type: String, enum: ["sheets_append", "email_organiser", "email_ack", "email_badge", "email_badge_link"], required: true },
     entity: { type: String, enum: ["Lead", "Visitor"], required: true },
     entityId: { type: Schema.Types.ObjectId, required: true, index: true },
-    // Unique per entity+kind → re-submission cannot double-send.
     dedupeKey: { type: String, required: true, unique: true },
     status: { type: String, enum: ["queued", "running", "done", "failed", "skipped"], default: "queued", index: true },
     attempts: { type: Number, default: 0 },

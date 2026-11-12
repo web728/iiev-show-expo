@@ -1,49 +1,100 @@
 import { z } from "zod";
 
-const trimmed = (max: number) => z.string().trim().max(max);
-const required = (label: string, max = 120) => trimmed(max).min(1, `${label} is required`);
+// Keep Zod error keys in sync with the `name` attribute of each HTML input.
+const trimmed = (max: number) => z.string().trim().max(max, `Maximum ${max} characters allowed`);
+const required = (label: string, max = 120) =>
+  trimmed(max).min(1, `${label} is required`);
 
-export const nameField = required("Full name", 100).min(2, "Please enter your full name");
-export const emailField = z.string().trim().toLowerCase().max(160).email("Enter a valid email address");
-export const phoneField = z.string().trim().max(24)
-  .transform((v) => v.replace(/[\s\-().]/g, ""))
-  .refine((v) => /^(\+91|0)?[6-9]\d{9}$/.test(v) || /^\+[1-9]\d{7,14}$/.test(v), {
-    message: "Enter a valid mobile number (Indian 10-digit, or international with + country code)",
-  });
+const optionalText = (max: number) =>
+  trimmed(max).optional().transform((value) => value || undefined);
 
-const optionalUrl = z.string().trim().max(200).optional()
-  .transform((v) => (v ? (/^https?:\/\//i.test(v) ? v : `https://${v}`) : undefined))
-  .refine((v) => !v || /^https?:\/\/[^\s/$.?#].[^\s]*$/i.test(v), { message: "Enter a valid website" });
+export const nameField = required("Full name", 100).min(
+  2,
+  "Please enter your full name",
+);
 
+export const emailField = z
+  .string()
+  .trim()
+  .toLowerCase()
+  .min(1, "Email is required")
+  .max(160, "Email is too long")
+  .email("Enter a valid email address");
 
-// Checkbox-free forms: never infer affirmative consent from a Submit click.
-// This legacy field remains for compatibility with existing Mongo models and APIs.
-// Ignore any client-provided true value rather than recording an invented opt-in.
+export const phoneField = z
+  .string()
+  .trim()
+  .min(1, "Mobile number is required")
+  .max(24, "Mobile number is too long")
+  .transform((value) => value.replace(/[\s().-]/g, ""))
+  .refine(
+    (value) => /^(?:\+91|0)?[6-9]\d{9}$/.test(value) || /^\+[1-9]\d{7,14}$/.test(value),
+    "Enter a valid Indian mobile number or international number with + country code",
+  );
+
+const optionalPhone = z.union([
+  phoneField,
+  z.literal("").transform(() => undefined),
+  z.undefined(),
+]);
+
+const optionalUrl = optionalText(200)
+  .transform((value) =>
+    value && !/^https?:\/\//i.test(value) ? `https://${value}` : value,
+  )
+  .refine((value) => {
+    if (!value) return true;
+    try {
+      const url = new URL(value);
+      return (
+        ["http:", "https:"].includes(url.protocol) &&
+        (url.hostname.includes(".") || url.hostname === "localhost") &&
+        !url.username &&
+        !url.password &&
+        !/\s/.test(value)
+      );
+    } catch {
+      return false;
+    }
+  }, "Enter a valid website URL");
+
+// These public forms have no affirmative consent input. Never infer consent from
+// pressing Submit, and never trust a client-supplied true value.
 export const consentFields = {
   privacyAccepted: z.unknown().optional().transform(() => false),
   marketingOptIn: z.unknown().optional().transform(() => false),
 };
 
 export const attributionSchema = z.object({
-  referrer: trimmed(500).optional(),
-  landingPage: trimmed(500).optional(),
-  utmSource: trimmed(100).optional(),
-  utmMedium: trimmed(100).optional(),
-  utmCampaign: trimmed(150).optional(),
-  utmTerm: trimmed(150).optional(),
-  utmContent: trimmed(150).optional(),
-}).partial().optional();
+  referrer: optionalText(500),
+  landingPage: optionalText(500),
+  utmSource: optionalText(100),
+  utmMedium: optionalText(100),
+  utmCampaign: optionalText(150),
+  utmTerm: optionalText(150),
+  utmContent: optionalText(150),
+}).optional();
 
 const meta = {
   idempotencyKey: z.string().uuid("Invalid submission key"),
   attribution: attributionSchema,
   website_url_confirm: z.string().max(0).optional(),
-  startedAt: z.number().int().optional(),
+  // Not used as an anti-bot gate. The client clock is untrusted.
+  startedAt: z.number().int().nonnegative().optional(),
+};
+
+const indianStateIsMissing = (data: { country: string; state?: string }) =>
+  data.country.trim().toLowerCase() === "india" && !data.state?.trim();
+
+const stateIssue = {
+  code: "custom" as const,
+  path: ["state"],
+  message: "State / UT is required for India",
 };
 
 const location = {
   city: required("City", 80),
-  state: trimmed(80).optional(),
+  state: optionalText(80),
   country: required("Country", 80),
 };
 
@@ -53,14 +104,13 @@ export const stallEnquirySchema = z.object({
   company: required("Company", 160),
   email: emailField,
   phone: phoneField,
-  // City/state and segments are intentionally not collected on the compact form.
   country: required("Country", 80),
   productDescription: required("Products & services", 1500),
-  areaPreference: trimmed(40).optional(),
+  areaPreference: optionalText(40),
   ...consentFields,
   ...meta,
 });
-export type StallEnquiryInput = z.infer<typeof stallEnquirySchema>;
+export type StallEnquiryInput = z.output<typeof stallEnquirySchema>;
 
 export const visitorRegistrationSchema = z.object({
   fullName: nameField,
@@ -68,13 +118,12 @@ export const visitorRegistrationSchema = z.object({
   phone: phoneField,
   company: required("Company / organisation", 160),
   designation: required("Designation", 100),
-  // Business / Category is optional; no city/reason/sectorInterests in this form.
-  industry: trimmed(80).optional(),
+  industry: optionalText(80),
   country: required("Country", 80),
   ...consentFields,
   ...meta,
 });
-export type VisitorRegistrationInput = z.infer<typeof visitorRegistrationSchema>;
+export type VisitorRegistrationInput = z.output<typeof visitorRegistrationSchema>;
 
 export const sponsorshipEnquirySchema = z.object({
   fullName: nameField,
@@ -84,11 +133,13 @@ export const sponsorshipEnquirySchema = z.object({
   phone: phoneField,
   ...location,
   website: optionalUrl,
-  interests: z.array(trimmed(80)).min(1, "Choose at least one area of interest"),
+  interests: z.array(required("Area of interest", 80)).min(1, "Choose at least one area of interest"),
   objectives: required("Objectives", 1500).min(10, "Please describe your objectives"),
-  budgetRange: trimmed(60).optional(),
+  budgetRange: optionalText(60),
   ...consentFields,
   ...meta,
+}).superRefine((data, ctx) => {
+  if (indianStateIsMissing(data)) ctx.addIssue(stateIssue);
 });
 
 export const partnerEnquirySchema = z.object({
@@ -103,6 +154,8 @@ export const partnerEnquirySchema = z.object({
   proposal: required("Proposal", 1500).min(10, "Please describe the proposed partnership"),
   ...consentFields,
   ...meta,
+}).superRefine((data, ctx) => {
+  if (indianStateIsMissing(data)) ctx.addIssue(stateIssue);
 });
 
 export const speakerApplicationSchema = z.object({
@@ -117,9 +170,11 @@ export const speakerApplicationSchema = z.object({
   abstract: required("Abstract", 2000).min(50, "Please provide an abstract of at least 50 characters"),
   format: required("Preferred format", 40),
   bio: required("Short bio", 1200).min(30, "Please provide a short bio"),
-  previousSpeaking: trimmed(800).optional(),
+  previousSpeaking: optionalText(800),
   ...consentFields,
   ...meta,
+}).superRefine((data, ctx) => {
+  if (indianStateIsMissing(data)) ctx.addIssue(stateIssue);
 });
 
 export const delegateRegistrationSchema = z.object({
@@ -129,23 +184,26 @@ export const delegateRegistrationSchema = z.object({
   email: emailField,
   phone: phoneField,
   ...location,
-  topicsOfInterest: z.array(trimmed(80)).optional(),
-  notes: trimmed(800).optional(),
+  topicsOfInterest: z.array(required("Topic", 80)).optional(),
+  notes: optionalText(800),
   ...consentFields,
   ...meta,
+}).superRefine((data, ctx) => {
+  if (indianStateIsMissing(data)) ctx.addIssue(stateIssue);
 });
 
 export const contactSchema = z.object({
   fullName: nameField,
   email: emailField,
-  phone: phoneField.optional().or(z.literal("").transform(() => undefined)),
-  company: trimmed(160).optional(),
+  phone: optionalPhone,
+  company: optionalText(160),
   topic: required("Topic", 60),
   message: required("Message", 3000).min(10, "Please enter a message"),
   ...consentFields,
   ...meta,
 });
 
+// Badge lookup uses its own endpoint, separate from form submission.
 export const badgeRetrieveSchema = z.object({
   email: emailField,
   website_url_confirm: z.string().max(0).optional(),
