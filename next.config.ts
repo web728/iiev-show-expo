@@ -5,20 +5,35 @@ const isProd = process.env.NODE_ENV === "production";
 
 // Content-Security-Policy kept compatible with Next.js inline bootstrapping.
 // Tighten with nonces once analytics/tag choices are final (see docs/DEPLOYMENT_GUIDE.md).
+
 const csp = [
   "default-src 'self'",
-  `script-src 'self' 'unsafe-inline'${isProd ? "" : " 'unsafe-eval'"} https://www.googletagmanager.com`,
+
+  // Next.js + Google Analytics + reCAPTCHA v2
+  `script-src 'self' 'unsafe-inline'${
+    isProd ? "" : " 'unsafe-eval'"
+  } https://www.googletagmanager.com https://www.google.com/recaptcha/ https://www.gstatic.com/recaptcha/ https://www.recaptcha.net/recaptcha/`,
+
   "style-src 'self' 'unsafe-inline'",
+
   "img-src 'self' data: blob: https:",
+
   "font-src 'self' data:",
-  "connect-src 'self' https://www.google-analytics.com https://*.google-analytics.com https://www.googletagmanager.com",
-  "frame-src https://www.google.com https://www.youtube-nocookie.com",
+
+  // Analytics + reCAPTCHA network requests
+  "connect-src 'self' https://www.google-analytics.com https://*.google-analytics.com https://www.googletagmanager.com https://www.google.com https://www.gstatic.com https://www.recaptcha.net",
+
+  // reCAPTCHA challenge iframe + existing video embeds
+  "frame-src https://www.google.com https://recaptcha.google.com https://www.recaptcha.net https://www.youtube-nocookie.com",
+
   "media-src 'self' blob:",
+
   "object-src 'none'",
   "base-uri 'self'",
   "form-action 'self'",
   "frame-ancestors 'none'",
 ].join("; ");
+
 
 const securityHeaders = [
   { key: "Content-Security-Policy", value: csp },
