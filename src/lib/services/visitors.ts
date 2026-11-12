@@ -7,27 +7,12 @@ import {
   IntegrationJob,
   type VisitorStatus,
 } from "@/models/leads";
-
-import {
-  humanRef,
-  hmac,
-  sha256,
-} from "@/lib/security/crypto";
-
+import { humanRef, hmac, sha256 } from "@/lib/security/crypto";
 import { issueBadgeToken } from "@/lib/badge/token";
-
-import {
-  enqueue,
-  enqueueVisitorPipeline,
-} from "@/lib/jobs";
-
+import { enqueue, enqueueVisitorPipeline } from "@/lib/jobs";
 import { getCurrentEdition } from "@/lib/data/edition";
-
 import { createBadgeAccessToken } from "@/lib/badge/access";
-
-import type {
-  VisitorRegistrationInput,
-} from "@/lib/validation/forms";
+import type { VisitorRegistrationInput } from "@/lib/validation/forms";
 
 export class VisitorError extends Error {
   constructor(
@@ -35,6 +20,7 @@ export class VisitorError extends Error {
     message: string
   ) {
     super(message);
+    this.name = "VisitorError";
   }
 }
 
@@ -55,15 +41,6 @@ export type RegisterResult =
       kind: "already_registered";
     };
 
-/**
- * Register visitor without a privacy checkbox.
- *
- * - No fabricated consent
- * - Existing badge generation maintained
- * - Same idempotency key prevents duplicate submission
- * - One visitor per email per edition
- * - Existing integration job pipeline maintained
- */
 export async function registerVisitor(
   input: VisitorRegistrationInput,
   ip: string
@@ -79,14 +56,14 @@ export async function registerVisitor(
     );
   }
 
-  // Prevent duplicate submissions from the same browser.
+  // Prevent duplicate submission.
   const same = await Visitor.findOne({
     idempotencyKey: input.idempotencyKey,
   }).lean<{
     _id: unknown;
     ref: string;
     status: VisitorStatus;
-    badgeVersion: number;
+    badgeVersion?: number;
   }>();
 
   if (same) {
@@ -94,7 +71,7 @@ export async function registerVisitor(
       same.status === "approved"
         ? await createBadgeAccessToken(
             String(same._id),
-            same.badgeVersion,
+            same.badgeVersion ?? 1,
             "24h"
           )
         : undefined;
@@ -107,24 +84,19 @@ export async function registerVisitor(
     };
   }
 
-  // One registration per email per edition.
   const exists = await Visitor.exists({
     edition: edition.slug,
     email: input.email,
   });
 
   if (exists) {
-    return {
-      kind: "already_registered",
-    };
+    return { kind: "already_registered" };
   }
 
   const autoApprove =
     edition.registration.approvalMode === "auto";
 
-  const badge = autoApprove
-    ? issueBadgeToken()
-    : null;
+  const badge = autoApprove ? issueBadgeToken() : null;
 
   const status: VisitorStatus = autoApprove
     ? "approved"
@@ -134,49 +106,30 @@ export async function registerVisitor(
     try {
       const visitor = await Visitor.create({
         ref: humanRef("VS", edition.slug),
-
         idempotencyKey: input.idempotencyKey,
-
         edition: edition.slug,
 
+        // Final visitor form fields
         fullName: input.fullName,
-        email: input.email,
-        phone: input.phone,
-
         company: input.company,
         designation: input.designation,
-        industry: input.industry,
-
-        city: input.city,
-        state: input.state,
+        phone: input.phone,
+        email: input.email,
+        industry: input.industry || undefined,
         country: input.country,
 
-        reasonForVisit: input.reasonForVisit,
-        sectorInterests: input.sectorInterests,
-
-        // Checkbox-free submission.
-        // Do not record uncollected consent.
+        // No fake or automatic consent.
         privacyAccepted: false,
-
-        // No unsolicited marketing opt-in.
         marketingOptIn: false,
 
         status,
 
         statusHistory: [
-          {
-            status: "submitted",
-            by: "web",
-          },
-          {
-            status: "validated",
-            by: "system",
-          },
+          { status: "submitted", by: "web" },
+          { status: "validated", by: "system" },
           {
             status,
-            by: autoApprove
-              ? "system:auto"
-              : "system",
+            by: autoApprove ? "system:auto" : "system",
           },
         ],
 
@@ -190,17 +143,10 @@ export async function registerVisitor(
           : {}),
 
         attribution: input.attribution,
-
         ipHash: hmac(ip, "ip"),
       });
 
-      /*
-       * No automatic ConsentRecord here.
-       *
-       * Registration is not equivalent to
-       * granting optional marketing consent.
-       */
-
+      // No automatic ConsentRecord for uncollected opt-ins.
       await enqueueVisitorPipeline(
         visitor._id,
         autoApprove
@@ -228,15 +174,6 @@ export async function registerVisitor(
 
       if (
         error.code === 11000 &&
-        error.keyPattern?.email
-      ) {
-        return {
-          kind: "already_registered",
-        };
-      }
-
-      if (
-        error.code === 11000 &&
         error.keyPattern?.idempotencyKey
       ) {
         const again = await Visitor.findOne({
@@ -245,7 +182,7 @@ export async function registerVisitor(
           _id: unknown;
           ref: string;
           status: VisitorStatus;
-          badgeVersion: number;
+          badgeVersion?: number;
         }>();
 
         if (again) {
@@ -253,7 +190,7 @@ export async function registerVisitor(
             again.status === "approved"
               ? await createBadgeAccessToken(
                   String(again._id),
-                  again.badgeVersion,
+                  again.badgeVersion ?? 1,
                   "24h"
                 )
               : undefined;
@@ -267,7 +204,13 @@ export async function registerVisitor(
         }
       }
 
-      // Retry rare reference collisions.
+      if (
+        error.code === 11000 &&
+        error.keyPattern?.email
+      ) {
+        return { kind: "already_registered" };
+      }
+
       if (
         error.code === 11000 &&
         error.keyPattern?.ref
@@ -279,9 +222,7 @@ export async function registerVisitor(
     }
   }
 
-  throw new Error(
-    "Could not allocate a unique reference"
-  );
+  throw new Error("Could not allocate a unique reference");
 }
 
 type Actor = {
@@ -299,10 +240,7 @@ async function pushStatus(
   return Visitor.findByIdAndUpdate(
     id,
     {
-      $set: {
-        status,
-        ...extra,
-      },
+      $set: { status, ...extra },
       $push: {
         statusHistory: {
           status,
@@ -311,15 +249,10 @@ async function pushStatus(
         },
       },
     },
-    {
-      returnDocument: "after",
-    }
+    { returnDocument: "after" }
   );
 }
 
-/**
- * Approve visitor and issue a new badge.
- */
 export async function approveVisitor(
   id: string,
   actor: Actor
@@ -330,10 +263,7 @@ export async function approveVisitor(
     .select("+badgeTokenHash");
 
   if (!visitor) {
-    throw new VisitorError(
-      "NOT_FOUND",
-      "Visitor not found"
-    );
+    throw new VisitorError("NOT_FOUND", "Visitor not found");
   }
 
   if (
@@ -353,19 +283,13 @@ export async function approveVisitor(
   const badge = issueBadgeToken();
   const version = (visitor.badgeVersion || 0) + 1;
 
-  await pushStatus(
-    id,
-    "approved",
-    actor,
-    undefined,
-    {
-      badgeTokenHash: badge.hash,
-      badgeTokenEnc: badge.enc,
-      badgeIssuedAt: new Date(),
-      badgeVersion: version,
-      badgeRevokedAt: null,
-    }
-  );
+  await pushStatus(id, "approved", actor, undefined, {
+    badgeTokenHash: badge.hash,
+    badgeTokenEnc: badge.enc,
+    badgeIssuedAt: new Date(),
+    badgeVersion: version,
+    badgeRevokedAt: null,
+  });
 
   await enqueue(
     "email_badge",
@@ -376,9 +300,6 @@ export async function approveVisitor(
   );
 }
 
-/**
- * Reject visitor.
- */
 export async function rejectVisitor(
   id: string,
   actor: Actor,
@@ -386,20 +307,11 @@ export async function rejectVisitor(
 ) {
   await connectDb();
 
-  await pushStatus(
-    id,
-    "rejected",
-    actor,
-    reason,
-    {
-      badgeRevokedAt: new Date(),
-    }
-  );
+  await pushStatus(id, "rejected", actor, reason, {
+    badgeRevokedAt: new Date(),
+  });
 }
 
-/**
- * Cancel visitor registration.
- */
 export async function cancelVisitor(
   id: string,
   actor: Actor,
@@ -407,20 +319,11 @@ export async function cancelVisitor(
 ) {
   await connectDb();
 
-  await pushStatus(
-    id,
-    "cancelled",
-    actor,
-    reason,
-    {
-      badgeRevokedAt: new Date(),
-    }
-  );
+  await pushStatus(id, "cancelled", actor, reason, {
+    badgeRevokedAt: new Date(),
+  });
 }
 
-/**
- * Reissue an approved visitor badge.
- */
 export async function reissueBadge(
   id: string,
   actor: Actor,
@@ -431,16 +334,11 @@ export async function reissueBadge(
   const visitor = await Visitor.findById(id);
 
   if (!visitor) {
-    throw new VisitorError(
-      "NOT_FOUND",
-      "Visitor not found"
-    );
+    throw new VisitorError("NOT_FOUND", "Visitor not found");
   }
 
   if (
-    !["approved", "checked_in"].includes(
-      visitor.status
-    )
+    !["approved", "checked_in"].includes(visitor.status)
   ) {
     throw new VisitorError(
       "INVALID_STATE",
@@ -449,9 +347,7 @@ export async function reissueBadge(
   }
 
   const badge = issueBadgeToken();
-
-  const version =
-    (visitor.badgeVersion || 0) + 1;
+  const version = (visitor.badgeVersion || 0) + 1;
 
   await Visitor.updateOne(
     { _id: id },
@@ -486,10 +382,6 @@ export async function reissueBadge(
   return version;
 }
 
-/**
- * Email-verified badge retrieval.
- * Do not reveal whether the address exists.
- */
 export async function requestBadgeLink(
   email: string
 ) {
@@ -500,17 +392,13 @@ export async function requestBadgeLink(
   const visitor = await Visitor.findOne({
     edition: edition.slug,
     email: email.toLowerCase(),
-    status: {
-      $in: ["approved", "checked_in"],
-    },
+    status: { $in: ["approved", "checked_in"] },
     badgeRevokedAt: null,
   }).select("_id");
 
   if (!visitor) return;
 
-  const bucket = Math.floor(
-    Date.now() / 600_000
-  );
+  const bucket = Math.floor(Date.now() / 600_000);
 
   await enqueue(
     "email_badge_link",
@@ -521,9 +409,6 @@ export async function requestBadgeLink(
   );
 }
 
-/**
- * Find visitor using secure badge token.
- */
 export async function findVisitorByToken(
   token: string
 ) {
@@ -534,9 +419,6 @@ export async function findVisitorByToken(
   });
 }
 
-/**
- * Return integration jobs for a visitor.
- */
 export async function pendingJobsFor(
   entityId: string
 ) {
