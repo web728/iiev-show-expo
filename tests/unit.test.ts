@@ -103,36 +103,175 @@ describe("badge QR payload", () => {
   });
 });
 
+
 describe("form validation", () => {
-  const base = {
-    fullName: "Asha Rao", designation: "Head of Sales", company: "VoltParts", email: "ASHA@Example.com ", phone: "098765 43210", city: "Pune", state: "Maharashtra", country: "India",
-    segments: ["ev-components"], productDescription: "Hub motors and controllers", areaPreference: "Not sure yet", privacyAccepted: true, idempotencyKey: "3b241101-e2bb-4255-8caf-4136c566a962",
+  const idempotencyKey =
+    "3b241101-e2bb-4255-8caf-4136c566a962";
+
+  // Exhibitor enquiry: only current required fields.
+  const stallBase = {
+    fullName: "Asha Rao",
+    company: "VoltParts",
+    designation: "Head of Sales",
+    email: "ASHA@Example.com ",
+    phone: "098765 43210",
+    country: "India",
+    productDescription: "Hub motors and controllers",
+    idempotencyKey,
   };
-  it("accepts a valid stall enquiry and normalises values", () => {
-    const r = stallEnquirySchema.parse({ ...base, website: "voltparts.in" });
-    expect(r.email).toBe("asha@example.com");
-    expect(r.phone).toBe("09876543210");
-    expect(r.website).toBe("https://voltparts.in");
-    expect(r.marketingOptIn).toBe(false);
+
+  // Visitor registration: only current required fields.
+  const visitorBase = {
+    fullName: "Asha Rao",
+    company: "VoltParts",
+    designation: "Head of Sales",
+    email: "ASHA@Example.com ",
+    phone: "098765 43210",
+    country: "India",
+    idempotencyKey,
+  };
+
+  it("accepts a valid exhibitor enquiry", () => {
+    const result = stallEnquirySchema.safeParse(stallBase);
+
+    expect(result.success).toBe(true);
+
+    if (!result.success) {
+      throw new Error(
+        JSON.stringify(result.error.flatten())
+      );
+    }
+
+    expect(result.data.fullName).toBe("Asha Rao");
+    expect(result.data.company).toBe("VoltParts");
+    expect(result.data.email).toBe("asha@example.com");
+    expect(result.data.phone).toBe("09876543210");
+    expect(result.data.productDescription).toBe(
+      "Hub motors and controllers"
+    );
   });
-  it("requires privacy consent and at least one segment", () => {
-    const r = stallEnquirySchema.safeParse({ ...base, privacyAccepted: false, segments: [] });
-    expect(r.success).toBe(false);
-    const paths = r.success ? [] : r.error.issues.map((i) => i.path[0]);
-    expect(paths).toContain("privacyAccepted");
-    expect(paths).toContain("segments");
+
+  it("does not require a privacy checkbox", () => {
+    const result = stallEnquirySchema.safeParse({
+      ...stallBase,
+      privacyAccepted: false,
+      marketingOptIn: false,
+    });
+
+    expect(result.success).toBe(true);
+
+    if (!result.success) {
+      throw new Error(
+        JSON.stringify(result.error.flatten())
+      );
+    }
+
+    expect(result.data.privacyAccepted).toBe(false);
+    expect(result.data.marketingOptIn).toBe(false);
   });
-  it("rejects unknown sector values (no injection of arbitrary tags)", () => {
-    expect(stallEnquirySchema.safeParse({ ...base, segments: ["$where"] }).success).toBe(false);
+
+  it("does not invent consent when omitted", () => {
+    const result = stallEnquirySchema.safeParse(stallBase);
+
+    expect(result.success).toBe(true);
+
+    if (!result.success) {
+      throw new Error(
+        JSON.stringify(result.error.flatten())
+      );
+    }
+
+    expect(result.data.privacyAccepted).toBe(false);
+    expect(result.data.marketingOptIn).toBe(false);
   });
-  it.each([["9876543210", true], ["+91 98765 43210", true], ["+44 20 7946 0958", true], ["12345", false], ["5876543210", false], ["+0123", false]])("phone %s → %s", (p, ok) => {
-    expect(phoneField.safeParse(p).success).toBe(ok);
+
+  it("rejects missing exhibitor required fields", () => {
+    const result = stallEnquirySchema.safeParse({
+      ...stallBase,
+      company: "",
+      productDescription: "",
+    });
+
+    expect(result.success).toBe(false);
+
+    if (result.success) return;
+
+    const paths = result.error.issues.map(
+      (issue) => issue.path[0]
+    );
+
+    expect(paths).toContain("company");
+    expect(paths).toContain("productDescription");
   });
-  it("visitor registration requires interests", () => {
-    const r = visitorRegistrationSchema.safeParse({ ...base, industry: "Fleet operator / logistics", reasonForVisit: "Other", sectorInterests: [] });
-    expect(r.success).toBe(false);
+
+  it("accepts a valid visitor registration", () => {
+    const result =
+      visitorRegistrationSchema.safeParse(visitorBase);
+
+    expect(result.success).toBe(true);
+
+    if (!result.success) {
+      throw new Error(
+        JSON.stringify(result.error.flatten())
+      );
+    }
+
+    expect(result.data.fullName).toBe("Asha Rao");
+    expect(result.data.email).toBe("asha@example.com");
+    expect(result.data.country).toBe("India");
+    expect(result.data.privacyAccepted).toBe(false);
+  });
+
+  it("accepts optional business category", () => {
+    const result = visitorRegistrationSchema.safeParse({
+      ...visitorBase,
+      industry: "EV Components",
+    });
+
+    expect(result.success).toBe(true);
+
+    if (!result.success) {
+      throw new Error(
+        JSON.stringify(result.error.flatten())
+      );
+    }
+
+    expect(result.data.industry).toBe("EV Components");
+  });
+
+  it("rejects missing visitor required fields", () => {
+    const result = visitorRegistrationSchema.safeParse({
+      ...visitorBase,
+      fullName: "",
+      country: "",
+    });
+
+    expect(result.success).toBe(false);
+
+    if (result.success) return;
+
+    const paths = result.error.issues.map(
+      (issue) => issue.path[0]
+    );
+
+    expect(paths).toContain("fullName");
+    expect(paths).toContain("country");
+  });
+
+  it.each([
+    ["9876543210", true],
+    ["+91 98765 43210", true],
+    ["+44 20 7946 0958", true],
+    ["12345", false],
+    ["5876543210", false],
+    ["+0123", false],
+  ])("phone %s → %s", (phone, valid) => {
+    expect(phoneField.safeParse(phone).success).toBe(
+      valid
+    );
   });
 });
+
 
 describe("Asia/Kolkata date handling", () => {
   it("interprets admin datetime input as IST and round-trips", () => {
