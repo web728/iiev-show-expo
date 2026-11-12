@@ -1,158 +1,277 @@
 import "server-only";
+
 import { connectDb } from "@/lib/db/connect";
-import { WebsiteDraft, WEB_FORMS, type WebsiteDraftData, type WebForm } from "./draft-model";
-import { appendWebsiteRow, updateWebsiteRow, websiteSheetRow } from "./sheets-sync";
-import { recipients, sendWebsiteNotification } from "./mail";
+import { Types } from "mongoose";
+import { WebsiteDraft, type WebForm, type WebsiteDraftData } from "@/lib/website-forms/draft-model";
+import {
+  assertSubmissionKey,
+  assertWebForm,
+  sanitizeWebsiteDraftData,
+  syncWebsiteDraftToSheet,
+} from "@/lib/website-forms/sheets-sync";
+import { emailRecipients } from "@/lib/website-forms/email";
+import { sendWebsiteNotification } from "@/lib/website-forms/website-email";
 
-export function isWebsiteForm(input: unknown): input is WebForm {
-  return typeof input === "string" && WEB_FORMS.some((form) => form === input);
-}
+export { saveWebsiteDraft } from "@/lib/website-forms/sheets-sync";
 
-function normalizeData(value: unknown): WebsiteDraftData {
-  if (typeof value !== "object" || value === null || Array.isArray(value)) return {};
-  const raw = value as Record<string, unknown>;
-  const output: WebsiteDraftData = {};
-  const strings = ["fullName", "email", "phone", "company", "designation", "country", "city", "state", "website", "industry", "areaPreference", "productDescription", "objectives", "proposal", "topic", "topicTitle", "message", "notes"] as const;
-  const arrays = ["interests", "topicsOfInterest", "segments", "sectorInterests"] as const;
-  for (const key of strings) {
-    const item = raw[key];
-    if (typeof item === "string") output[key] = item.trim().slice(0, 2000);
+export class DraftConflictError extends Error {
+  constructor() {
+    super("This submission key belongs to another submission.");
+    this.name = "DraftConflictError";
   }
-  for (const key of arrays) {
-    const item = raw[key];
-    if (Array.isArray(item)) output[key] = item.filter((x): x is string => typeof x === "string").slice(0, 20).map((x) => x.trim().slice(0, 100));
-  }
-  if (output.email) output.email = output.email.toLowerCase();
-  return output;
 }
 
-function validKey(value: unknown): value is string {
-  return typeof value === "string" && /^[0-9a-f]{8}-[0-9a-f-]{20,50}$/i.test(value);
+function duplicateKey(error: unknown): boolean {
+  return Boolean(error && typeof error === "object" && "code" in error && error.code === 11000);
 }
 
-function duplicateKey(error: unknown) {
-  return typeof error === "object" && error !== null && "code" in error && error.code === 11000;
-}
-
-export async function saveWebsiteDraft(input: {
-  submissionKey: unknown; form: unknown; data: unknown; privacyAccepted: unknown;
-}) {
-  if (!validKey(input.submissionKey) || !isWebsiteForm(input.form)) throw new Error("Invalid draft identity");
-  if (input.privacyAccepted !== true) throw new Error("Privacy acknowledgement required before saving a draft");
-  const data = normalizeData(input.data);
-  if (![data.fullName, data.email, data.phone].some(Boolean)) return { saved: false, reason: "No contact data yet" };
-  if (data.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(data.email)) throw new Error("Invalid contact input");
-  await connectDb();
-  const existing = await WebsiteDraft.findOne({ submissionKey: input.submissionKey }).lean();
-  if (existing && existing.form !== input.form) throw new Error("Draft key belongs to a different form");
-  if (existing?.state === "submitted") return { saved: true, finalized: true };
-  try {
-    await WebsiteDraft.findOneAndUpdate(
-      { submissionKey: input.submissionKey, state: "draft" },
-      { $set: { data, privacyAccepted: true }, $inc: { revision: 1 }, $setOnInsert: { form: input.form, state: "draft" } },
-      { upsert: true, runValidators: true, setDefaultsOnInsert: true }
-    );
-  } catch (error) {
-    if (!duplicateKey(error)) throw error;
-    const current = await WebsiteDraft.findOne({ submissionKey: input.submissionKey }).lean();
-    if (!current || current.form !== input.form || current.state !== "submitted") throw error;
-  }
-  return { saved: true };
-}
-
+/**
+ * Finalise the SAME autosaved WebsiteDraft after the canonical CRM record exists.
+ * No CAPTCHA here: it has already been checked by the public submission guard.
+ * This function performs MongoDB writes only; no Google/SMTP wait on submit.
+ */
 export async function finalizeWebsiteDraft(input: {
-  submissionKey: unknown; form: unknown; data: unknown; ref: string;
-}) {
-  if (!validKey(input.submissionKey) || !isWebsiteForm(input.form)) return;
-  const data = normalizeData(input.data);
+  submissionKey: string;
+  form: WebForm;
+  data: unknown;
+  ref: string;
+  finalEntity?: "Lead" | "Visitor";
+  finalEntityId?: string;
+}): Promise<{ ref: string; newlyFinalized: boolean }> {
+  assertSubmissionKey(input.submissionKey);
+  assertWebForm(input.form);
+  if (typeof input.ref !== "string" || !input.ref.trim() || input.ref.length > 120) {
+    throw new Error("Missing final reference");
+  }
+  const data = sanitizeWebsiteDraftData(input.data);
   await connectDb();
-  const old = await WebsiteDraft.findOne({ submissionKey: input.submissionKey }).lean();
-  if (old && (old.form !== input.form || old.state === "submitted")) return;
+  const now = new Date();
+
+  for (let attempt = 0; attempt < 5; attempt++) {
+    const existing = await WebsiteDraft.findOne({ submissionKey: input.submissionKey }).lean();
+    if (existing) {
+      if (existing.form !== input.form) throw new DraftConflictError();
+      if (existing.state === "submitted") {
+        if (existing.finalRef !== input.ref ||
+            (existing.data.email && existing.data.email !== data.email)) {
+          throw new DraftConflictError();
+        }
+        return { ref: existing.finalRef, newlyFinalized: false };
+      }
+      const updated = await WebsiteDraft.findOneAndUpdate(
+        { _id: existing._id, form: input.form, state: "draft" },
+        {
+          $set: {
+            state: "submitted",
+            data,
+            finalRef: input.ref,
+            finalEntity: input.finalEntity,
+            finalEntityId: input.finalEntityId ? new Types.ObjectId(input.finalEntityId) : undefined,
+            submittedAt: now,
+            privacyAccepted: false, // Form has no affirmative privacy checkbox.
+            marketingOptIn: false,
+          },
+          $inc: { revision: 1 },
+        },
+        { new: true, runValidators: true },
+      );
+      if (updated) return { ref: input.ref, newlyFinalized: true };
+      continue;
+    }
+
+    try {
+      await WebsiteDraft.create({
+        submissionKey: input.submissionKey,
+        form: input.form,
+        state: "submitted",
+        data,
+        finalRef: input.ref,
+        finalEntity: input.finalEntity,
+        finalEntityId: input.finalEntityId ? new Types.ObjectId(input.finalEntityId) : undefined,
+        submittedAt: now,
+        privacyAccepted: false,
+        marketingOptIn: false,
+        revision: 1,
+      });
+      return { ref: input.ref, newlyFinalized: true };
+    } catch (error) {
+      if (!duplicateKey(error)) throw error;
+      // A concurrent autosave/final submission won. Re-read before deciding.
+    }
+  }
+  throw new Error("Concurrent draft update; safely retry with the same submission key");
+}
+
+export async function findFinalBrochureSubmission(
+  submissionKey: unknown,
+  email: unknown,
+): Promise<boolean> {
+  if (typeof submissionKey !== "string" || typeof email !== "string") return false;
+  if (!/^[0-9a-f-]{36}$/i.test(submissionKey)) return false;
+  await connectDb();
+  const draft = await WebsiteDraft.findOne({
+    submissionKey,
+    form: "brochure",
+    state: "submitted",
+    "data.email": email.trim().toLowerCase(),
+  }).select("_id").lean();
+  return Boolean(draft);
+}
+
+async function sendOrganiserOnce(
+  key: string,
+  index: 0 | 1,
+  recipient: string,
+): Promise<"sent" | "already_sent" | "busy"> {
+  const sentKey = index === 0 ? "mail1Sent" : "mail2Sent";
+  const leaseKey = index === 0 ? "mail1LeaseUntil" : "mail2LeaseUntil";
+  const now = new Date();
+  const leaseUntil = new Date(now.getTime() + 120_000);
+  const claimed = await WebsiteDraft.findOneAndUpdate(
+    {
+      submissionKey: key,
+      state: "submitted",
+      [sentKey]: false,
+      $or: [
+        { [leaseKey]: { $exists: false } },
+        { [leaseKey]: { $lte: now } },
+      ],
+    },
+    { $set: { [leaseKey]: leaseUntil } },
+    { new: true },
+  ).lean();
+  if (!claimed) {
+    const latest = await WebsiteDraft.findOne({ submissionKey: key })
+      .select(`${sentKey} ${leaseKey}`).lean();
+    return latest?.[sentKey] ? "already_sent" : "busy";
+  }
+
   try {
-    await WebsiteDraft.findOneAndUpdate(
-      { submissionKey: input.submissionKey, state: "draft" },
-      {
-        $set: { state: "submitted", data, privacyAccepted: true, finalRef: input.ref, submittedAt: new Date() },
-        $inc: { revision: 1 }, $setOnInsert: { form: input.form },
-      },
-      { upsert: true, runValidators: true, setDefaultsOnInsert: true }
+    await sendWebsiteNotification({
+      recipient,
+      form: claimed.form,
+      data: claimed.data,
+      submittedAt: claimed.submittedAt ?? claimed.updatedAt,
+      ref: claimed.finalRef ?? key,
+    });
+    await WebsiteDraft.updateOne(
+      { _id: claimed._id, [leaseKey]: leaseUntil },
+      { $set: { [sentKey]: true }, $unset: { [leaseKey]: "", lastError: "" } },
     );
+    return "sent";
   } catch (error) {
-    if (!duplicateKey(error)) throw error;
-    const current = await WebsiteDraft.findOne({ submissionKey: input.submissionKey }).lean();
-    if (!current || current.form !== input.form || current.state !== "submitted") throw error;
+    await WebsiteDraft.updateOne(
+      { _id: claimed._id, [leaseKey]: leaseUntil },
+      {
+        $set: { lastError: error instanceof Error ? error.message.slice(0, 400) : "Email delivery failed" },
+        $unset: { [leaseKey]: "" },
+      },
+    );
+    throw error;
   }
 }
 
-export async function deliverWebsiteDraft(submissionKey: string): Promise<void> {
+/**
+ * One retryable outbox worker. Drafts sync to Sheet, but NEVER send emails.
+ * Final submissions update the same Sheet row and email both organisers.
+ * Uses DB leases and flags to avoid normal concurrent duplicates.
+ */
+export async function deliverWebsiteDraft(submissionKey: string): Promise<{
+  sheetSynced: boolean;
+  emailsPending: number;
+  failures: string[];
+}> {
+  assertSubmissionKey(submissionKey);
   await connectDb();
-  const doc = await WebsiteDraft.findOne({ submissionKey }).lean();
-  if (!doc || !doc.privacyAccepted) return;
-  const now = new Date();
-  if (doc.sheetRevision < doc.revision) {
-    const claimed = await WebsiteDraft.findOneAndUpdate(
-      { _id: doc._id, $or: [{ sheetLeaseUntil: { $exists: false } }, { sheetLeaseUntil: { $lt: now } }] },
-      { $set: { sheetLeaseUntil: new Date(now.getTime() + 60_000) } },
-      { new: true }
-    ).lean();
-    if (claimed) {
-      try {
-        const latest = await WebsiteDraft.findById(doc._id).lean();
-        if (latest) {
-          const at = latest.state === "submitted" ? (latest.submittedAt ?? latest.createdAt) : latest.createdAt;
-          const row = websiteSheetRow(latest.form, latest.data, latest.state, at);
-          const range = latest.sheetRange || await appendWebsiteRow(row);
-          if (latest.sheetRange) await updateWebsiteRow(range, row);
-          await WebsiteDraft.updateOne(
-            { _id: doc._id },
-            { $set: { sheetRange: range, sheetRevision: latest.revision }, $unset: { sheetLeaseUntil: 1, lastError: 1 } }
-          );
+  const original = await WebsiteDraft.findOne({ submissionKey }).lean();
+  if (!original) throw new Error("Draft does not exist");
+  const failures: string[] = [];
+
+  try {
+    const result = await syncWebsiteDraftToSheet(submissionKey);
+    if (!result.synced) failures.push("sheet_pending");
+  } catch (error) {
+    failures.push("sheets");
+    console.error("[forms] Sheet sync pending", error instanceof Error ? error.message : "unknown");
+  }
+
+  if (original.state === "submitted") {
+    try {
+      const [first, second] = emailRecipients();
+      const results = await Promise.allSettled([
+        sendOrganiserOnce(submissionKey, 0, first),
+        sendOrganiserOnce(submissionKey, 1, second),
+      ]);
+      for (const [index, result] of results.entries()) {
+        if (result.status === "rejected") {
+          failures.push(`email${index + 1}`);
+          console.error(`[forms] Email ${index + 1} pending`,
+            result.reason instanceof Error ? result.reason.message : "unknown");
         }
+      }
+    } catch (error) {
+      failures.push("email_configuration");
+      console.error("[forms] Email configuration pending",
+        error instanceof Error ? error.message : "unknown");
+    }
+  }
+
+  const latest = await WebsiteDraft.findOne({ submissionKey }).lean();
+  if (!latest) throw new Error("Draft disappeared");
+  return {
+    sheetSynced: latest.sheetRevision >= latest.revision,
+    emailsPending: latest.state === "submitted"
+      ? Number(!latest.mail1Sent) + Number(!latest.mail2Sent)
+      : 0,
+    failures,
+  };
+}
+
+/** Called by an authorised CRON, not from a public website request. */
+export async function processPendingWebsiteDrafts(max = 25) {
+  await connectDb();
+  const limit = Math.min(50, Math.max(1, Math.floor(max)));
+  const pending = await WebsiteDraft.find({
+    $or: [
+      { $expr: { $lt: ["$sheetRevision", "$revision"] } },
+      { state: "submitted", mail1Sent: false },
+      { state: "submitted", mail2Sent: false },
+    ],
+  })
+    .sort({ updatedAt: 1 })
+    .limit(limit)
+    .select("submissionKey")
+    .lean();
+
+  let completed = 0;
+  let stillPending = 0;
+  let cursor = 0;
+  // Limit external API concurrency; avoid a long sequential cron timeout.
+  async function worker() {
+    while (cursor < pending.length) {
+      const record = pending[cursor++];
+      try {
+        const delivered = await deliverWebsiteDraft(record.submissionKey);
+        if (delivered.sheetSynced && delivered.emailsPending === 0) completed++;
+        else stillPending++;
       } catch (error) {
-        await WebsiteDraft.updateOne({ _id: doc._id }, { $set: { lastError: String(error) }, $unset: { sheetLeaseUntil: 1 } });
+        stillPending++;
+        console.error("[forms] Pending draft delivery", error instanceof Error ? error.message : "unknown");
       }
     }
   }
-  const fresh = await WebsiteDraft.findById(doc._id).lean();
-  if (!fresh || fresh.state !== "submitted" || !fresh.finalRef) return;
-  let targets: string[];
-  try {
-    targets = recipients();
-  } catch (error) {
-    await WebsiteDraft.updateOne({ _id: doc._id }, { $set: { lastError: String(error) } });
-    return;
-  }
-  for (const [index, to] of targets.entries()) {
-    const doneKey: "mail1Sent" | "mail2Sent" = index === 0 ? "mail1Sent" : "mail2Sent";
-    const leaseKey: "mail1LeaseUntil" | "mail2LeaseUntil" = index === 0 ? "mail1LeaseUntil" : "mail2LeaseUntil";
-    const current = await WebsiteDraft.findById(doc._id).lean();
-    if (!current || current[doneKey]) continue;
-    const claim = await WebsiteDraft.findOneAndUpdate(
-      { _id: doc._id, [doneKey]: false,
-        $or: [{ [leaseKey]: { $exists: false } }, { [leaseKey]: { $lt: new Date() } }] },
-      { $set: { [leaseKey]: new Date(Date.now() + 90_000) } },
-      { new: true }
-    );
-    if (!claim) continue;
-    try {
-      await sendWebsiteNotification({ recipient: to, form: fresh.form, data: fresh.data,
-        submittedAt: fresh.submittedAt ?? fresh.updatedAt, ref: fresh.finalRef });
-      await WebsiteDraft.updateOne({ _id: doc._id }, { $set: { [doneKey]: true }, $unset: { [leaseKey]: 1 } });
-    } catch (error) {
-      await WebsiteDraft.updateOne({ _id: doc._id }, { $set: { lastError: String(error) }, $unset: { [leaseKey]: 1 } });
-    }
-  }
+  await Promise.all(Array.from({ length: Math.min(4, pending.length) }, () => worker()));
+  return { examined: pending.length, completed, stillPending };
 }
 
-export async function processPendingWebsiteDrafts(limit = 25) {
-  await connectDb();
-  const rows = await WebsiteDraft.find({
-    privacyAccepted: true,
-    $or: [
-      { $expr: { $lt: ["$sheetRevision", "$revision"] } },
-      { state: "submitted", $or: [{ mail1Sent: false }, { mail2Sent: false }] },
-    ],
-  }).sort({ updatedAt: 1 }).limit(limit).select("submissionKey").lean();
-  for (const entry of rows) await deliverWebsiteDraft(entry.submissionKey);
-  return rows.length;
+/** Used for existing saved Lead/Visitor retries: prefer persisted CRM values. */
+export function crmRecordToDraftData(record: {
+  fullName?: string; email?: string; phone?: string; phoneCountry?: string;
+  company?: string; designation?: string; city?: string; state?: string;
+  country?: string; website?: string; industry?: string;
+  details?: unknown; attribution?: unknown;
+}): WebsiteDraftData {
+  const details = record.details && typeof record.details === "object" && !Array.isArray(record.details)
+    ? record.details as Record<string, unknown> : {};
+  return sanitizeWebsiteDraftData({ ...details, ...record, details: undefined });
 }

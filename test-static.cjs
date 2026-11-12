@@ -1,0 +1,25 @@
+const fs = require('node:fs');
+const path = require('node:path');
+const root = __dirname;
+function read(p) { return fs.readFileSync(path.join(root,p),'utf8') }
+const draft = read('app/api/forms/draft/route.ts');
+const lead = read('app/api/forms/[type]/route.ts');
+const visitor = read('app/api/visitors/register/route.ts');
+const brochure = read('app/api/downloads/brochure/route.ts');
+const smart = read('components/forms/smart-form.tsx');
+const pipeline = read('lib/website-forms/pipeline.ts');
+const assert=require('node:assert/strict');
+assert.match(smart, /autosaveEndpoint = "\/api\/forms\/draft\/"/);
+assert.match(draft,/syncImmediately: false/);
+assert.doesNotMatch(draft,/verifyRecaptcha/);
+assert.match(lead,/handlePublicSubmission/);
+assert.match(visitor,/handlePublicSubmission/);
+assert.match(lead,/skipLegacyPipeline: true/);
+assert.match(visitor,/skipLegacyPipeline: true/);
+assert.match(lead,/existingFinalSubmission/);
+assert.match(visitor,/existingFinalSubmission/);
+assert.match(brochure,/verifyRecaptcha\(data.recaptchaToken, ip\)/);
+assert.doesNotMatch(brochure,/z.literal\(true\)/);
+assert.match(pipeline,/state: "submitted"/);
+assert.match(pipeline,/syncWebsiteDraftToSheet/);
+console.log('PASS: canonical draft path, backend-only CAPTCHA, legacy pipeline disabled for new forms, retry guards and brochure consent alignment');

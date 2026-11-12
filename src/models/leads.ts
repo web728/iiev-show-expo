@@ -1,8 +1,11 @@
 import { Schema } from "mongoose";
 import { defineModel } from "./_helpers";
 
-export const LEAD_TYPES = ["stall", "sponsorship", "partner", "speaker", "delegate", "contact", "media"] as const;
+export const LEAD_TYPES = [
+  "stall", "sponsorship", "partner", "speaker", "delegate", "contact", "media",
+] as const;
 export type LeadType = (typeof LEAD_TYPES)[number];
+
 export const LEAD_TYPE_LABELS: Record<LeadType, string> = {
   stall: "Stall enquiry",
   sponsorship: "Sponsorship enquiry",
@@ -13,8 +16,12 @@ export const LEAD_TYPE_LABELS: Record<LeadType, string> = {
   media: "Media enquiry",
 };
 
-export const LEAD_STAGES = ["new", "contacted", "qualified", "proposal_sent", "negotiating", "confirmed", "closed_lost"] as const;
+export const LEAD_STAGES = [
+  "new", "contacted", "qualified", "proposal_sent",
+  "negotiating", "confirmed", "closed_lost",
+] as const;
 export type LeadStage = (typeof LEAD_STAGES)[number];
+
 export const LEAD_STAGE_LABELS: Record<LeadStage, string> = {
   new: "New",
   contacted: "Contacted",
@@ -40,17 +47,34 @@ export const attributionSchema = new Schema(
 
 export const integrationStateSchema = new Schema(
   {
-    sheets: { type: String, enum: ["pending", "done", "failed", "skipped"], default: "pending" },
-    organiserEmail: { type: String, enum: ["pending", "done", "failed", "skipped"], default: "pending" },
-    ackEmail: { type: String, enum: ["pending", "done", "failed", "skipped"], default: "pending" },
+    sheets: {
+      type: String,
+      enum: ["pending", "done", "failed", "skipped"],
+      default: "pending",
+    },
+    organiserEmail: {
+      type: String,
+      enum: ["pending", "done", "failed", "skipped"],
+      default: "pending",
+    },
+    ackEmail: {
+      type: String,
+      enum: ["pending", "done", "failed", "skipped"],
+      default: "pending",
+    },
   },
   { _id: false },
 );
 
 const NoteSchema = new Schema(
-  { body: { type: String, required: true }, by: String, at: { type: Date, default: Date.now } },
+  {
+    body: { type: String, required: true },
+    by: String,
+    at: { type: Date, default: Date.now },
+  },
   { _id: true },
 );
+
 const TaskSchema = new Schema(
   {
     title: String,
@@ -66,12 +90,14 @@ const TaskSchema = new Schema(
 const LeadSchema = new Schema(
   {
     ref: { type: String, required: true, unique: true },
+    // Final submission MUST reuse the same key used by autosave.
     idempotencyKey: { type: String, required: true, unique: true },
-    type: { type: String, enum: LEAD_TYPES, required: true, index: true },
+    type: { type: String, enum: [...LEAD_TYPES], required: true, index: true },
     edition: { type: String, required: true, index: true },
     fullName: { type: String, required: true },
-    email: { type: String, required: true, lowercase: true, index: true },
-    phone: String,
+    email: { type: String, required: true, lowercase: true, trim: true, index: true },
+    phone: String, // Normalized E.164, e.g. +919876543210
+    phoneCountry: { type: String, trim: true, uppercase: true }, // e.g. IN
     company: String,
     designation: String,
     city: String,
@@ -79,15 +105,19 @@ const LeadSchema = new Schema(
     country: String,
     website: String,
     details: { type: Schema.Types.Mixed, default: () => ({}) },
-    // Explicitly false for checkbox-free public forms. No invented consent.
     privacyAccepted: { type: Boolean, required: true, default: false },
     marketingOptIn: { type: Boolean, default: false },
-    stage: { type: String, enum: LEAD_STAGES, default: "new", index: true },
+    stage: { type: String, enum: [...LEAD_STAGES], default: "new", index: true },
     assignedTo: { type: String, index: true },
     notes: [NoteSchema],
     tasks: [TaskSchema],
     stageHistory: [
-      { stage: { type: String, enum: LEAD_STAGES }, by: String, at: { type: Date, default: Date.now }, _id: false },
+      {
+        stage: { type: String, enum: [...LEAD_STAGES] },
+        by: String,
+        at: { type: Date, default: Date.now },
+        _id: false,
+      },
     ],
     attribution: attributionSchema,
     integrations: { type: integrationStateSchema, default: () => ({}) },
@@ -100,32 +130,47 @@ LeadSchema.index({ email: 1, type: 1, edition: 1 });
 export const Lead = defineModel("Lead", LeadSchema);
 
 // ---- Visitors and badges ----
-export const VISITOR_STATUSES = ["submitted", "validated", "pending_review", "approved", "rejected", "cancelled", "checked_in"] as const;
+export const VISITOR_STATUSES = [
+  "submitted", "validated", "pending_review", "approved",
+  "rejected", "cancelled", "checked_in",
+] as const;
 export type VisitorStatus = (typeof VISITOR_STATUSES)[number];
 
 const VisitorSchema = new Schema(
   {
     ref: { type: String, required: true, unique: true },
+    // Same value as WebsiteDraft.submissionKey for this registration.
     idempotencyKey: { type: String, required: true, unique: true },
     edition: { type: String, required: true, index: true },
     fullName: { type: String, required: true },
-    email: { type: String, required: true, lowercase: true },
+    email: { type: String, required: true, lowercase: true, trim: true },
     phone: { type: String, required: true },
+    phoneCountry: { type: String, trim: true, uppercase: true }, // e.g. IN
     company: { type: String, required: true },
     designation: { type: String, required: true },
-    // FIX: Matches visitorRegistrationSchema; field is OPTIONAL on the form.
     industry: String,
     city: String,
     state: String,
     country: { type: String, required: true },
-    // Retain legacy fields for existing registrations and admin views.
+    // Legacy fields remain compatible with existing admin screens.
     reasonForVisit: String,
     sectorInterests: [String],
     privacyAccepted: { type: Boolean, required: true, default: false },
     marketingOptIn: { type: Boolean, default: false },
-    status: { type: String, enum: VISITOR_STATUSES, default: "submitted", index: true },
+    status: {
+      type: String,
+      enum: [...VISITOR_STATUSES],
+      default: "submitted",
+      index: true,
+    },
     statusHistory: [
-      { status: { type: String, enum: VISITOR_STATUSES }, by: String, reason: String, at: { type: Date, default: Date.now }, _id: false },
+      {
+        status: { type: String, enum: [...VISITOR_STATUSES] },
+        by: String,
+        reason: String,
+        at: { type: Date, default: Date.now },
+        _id: false,
+      },
     ],
     badgeTokenHash: { type: String, index: true, sparse: true, select: false },
     badgeTokenEnc: { type: String, select: false },
@@ -140,6 +185,9 @@ const VisitorSchema = new Schema(
   },
   { timestamps: true },
 );
+
+// Keep one visitor registration per email per edition. The API must return
+// an existing registration as success, not expose an E11000 duplicate error.
 VisitorSchema.index({ edition: 1, email: 1 }, { unique: true });
 VisitorSchema.index({ edition: 1, createdAt: -1 });
 VisitorSchema.index({ fullName: "text", company: "text", email: "text" });
@@ -150,7 +198,11 @@ const CheckInSchema = new Schema(
     visitorId: { type: Schema.Types.ObjectId, ref: "Visitor", index: true },
     visitorRef: String,
     edition: { type: String, required: true, index: true },
-    result: { type: String, enum: ["ok", "duplicate", "revoked", "not_found", "not_approved", "wrong_edition"], required: true },
+    result: {
+      type: String,
+      enum: ["ok", "duplicate", "revoked", "not_found", "not_approved", "wrong_edition"],
+      required: true,
+    },
     method: { type: String, enum: ["qr", "manual"], required: true },
     station: String,
     scannedBy: String,
@@ -161,15 +213,33 @@ const CheckInSchema = new Schema(
 CheckInSchema.index({ edition: 1, createdAt: -1 });
 export const CheckIn = defineModel("CheckIn", CheckInSchema);
 
+// Worker must implement sheets_sync as an UPSERT (append once, update same row
+// afterwards). sheets_append is preserved for the existing worker.
 const IntegrationJobSchema = new Schema(
   {
-    kind: { type: String, enum: ["sheets_append", "email_organiser", "email_ack", "email_badge", "email_badge_link"], required: true },
-    entity: { type: String, enum: ["Lead", "Visitor"], required: true },
+    kind: {
+      type: String,
+      enum: [
+        "sheets_append", "sheets_sync", "email_organiser",
+        "email_ack", "email_badge", "email_badge_link",
+      ],
+      required: true,
+    },
+    entity: {
+      type: String,
+      enum: ["Lead", "Visitor", "WebsiteDraft"],
+      required: true,
+    },
     entityId: { type: Schema.Types.ObjectId, required: true, index: true },
     dedupeKey: { type: String, required: true, unique: true },
-    status: { type: String, enum: ["queued", "running", "done", "failed", "skipped"], default: "queued", index: true },
-    attempts: { type: Number, default: 0 },
-    maxAttempts: { type: Number, default: 6 },
+    status: {
+      type: String,
+      enum: ["queued", "running", "done", "failed", "skipped"],
+      default: "queued",
+      index: true,
+    },
+    attempts: { type: Number, default: 0, min: 0 },
+    maxAttempts: { type: Number, default: 6, min: 1 },
     nextRunAt: { type: Date, default: Date.now, index: true },
     lastError: String,
     payload: Schema.Types.Mixed,
@@ -177,14 +247,19 @@ const IntegrationJobSchema = new Schema(
   },
   { timestamps: true },
 );
+IntegrationJobSchema.index({ status: 1, nextRunAt: 1, lockedUntil: 1 });
 export const IntegrationJob = defineModel("IntegrationJob", IntegrationJobSchema);
 
 const ConsentRecordSchema = new Schema(
   {
-    subjectEmail: { type: String, lowercase: true, index: true },
+    subjectEmail: { type: String, lowercase: true, trim: true, index: true },
     entity: String,
     entityId: String,
-    purpose: { type: String, enum: ["privacy_notice", "marketing", "analytics_cookies"], required: true },
+    purpose: {
+      type: String,
+      enum: ["privacy_notice", "marketing", "analytics_cookies"],
+      required: true,
+    },
     granted: { type: Boolean, required: true },
     noticeVersion: String,
     source: String,

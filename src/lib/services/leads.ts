@@ -22,6 +22,7 @@ type CommonInput = {
   fullName: string;
   email: string;
   phone?: string;
+  phoneCountry?: string;
   company?: string;
   designation?: string;
   city?: string;
@@ -34,69 +35,103 @@ type CommonInput = {
 };
 
 const COMMON_KEYS = new Set([
-  "idempotencyKey", "fullName", "email", "phone", "company", "designation",
-  "city", "state", "country", "website", "privacyAccepted", "marketingOptIn",
-  "attribution", "website_url_confirm", "startedAt", "recaptchaToken",
+  "idempotencyKey", "fullName", "email", "phone", "phoneCountry", "company",
+  "designation", "city", "state", "country", "website", "privacyAccepted",
+  "marketingOptIn", "attribution", "website_url_confirm", "startedAt", "recaptchaToken",
 ]);
 
 export type CreateLeadResult = { ref: string; id: string; duplicate: boolean };
-
 export class LeadSubmissionConflict extends Error {
   constructor() {
-    super("This submission key belongs to a different form or event edition. Please retry.");
+    super("Submission key is associated with a different request.");
     this.name = "LeadSubmissionConflict";
   }
 }
 
-type ExistingLead = { _id: unknown; ref: string; type: LeadType; edition: string };
+type ExistingLead = {
+  _id: unknown;
+  ref: string;
+  type: LeadType;
+  edition: string;
+  email: string;
+};
 
-async function lookupKey(key: string) {
+async function findByKey(key: string): Promise<ExistingLead | null> {
   return Lead.findOne({ idempotencyKey: key })
-    .select("ref type edition")
+    .select("_id ref type edition email")
     .lean<ExistingLead>();
 }
 
-function sameLead(existing: ExistingLead, type: LeadType, edition: string): CreateLeadResult {
-  if (existing.type !== type || existing.edition !== edition) {
+function matchExisting(existing: ExistingLead, type: LeadType, email: string): CreateLeadResult {
+  // Prior submission remains idempotently valid even if the current edition has changed.
+  if (existing.type !== type || existing.email.toLowerCase() !== email) {
     throw new LeadSubmissionConflict();
   }
   return { ref: existing.ref, id: String(existing._id), duplicate: true };
 }
 
-/** A queue failure must NOT make a successfully saved form appear to have failed. */
-async function enqueueSafely(id: unknown) {
+/**
+ * Safe to call from a final-submission route's existingFinalSubmission hook.
+ * ONLY final Lead records are searched (not an autosaved WebsiteDraft).
+ * A mismatching key/email returns null; never reveal another person's ref.
+ */
+export async function findExistingLeadSubmission(
+  type: LeadType,
+  key: unknown,
+  email: unknown,
+): Promise<CreateLeadResult | null> {
+  if (typeof key !== "string" || !/^[A-Za-z0-9_-]{8,100}$/.test(key) ||
+      typeof email !== "string" || !email.includes("@")) return null;
+  await connectDb();
+  const existing = await findByKey(key);
+  if (!existing || existing.type !== type ||
+      existing.email.toLowerCase() !== email.trim().toLowerCase()) return null;
+  return { ref: existing.ref, id: String(existing._id), duplicate: true };
+}
+
+/** Queue failures must not turn successfully saved records into failed submissions. */
+async function enqueueSafely(id: unknown): Promise<void> {
   try {
     await enqueueLeadPipeline(id as Parameters<typeof enqueueLeadPipeline>[0]);
-  } catch (err) {
-    // Requires a scheduled reconciliation / queue-repair job (see README).
+  } catch (error) {
     log.error("form.lead_pipeline_enqueue_failed", {
       id: String(id),
-      error: err instanceof Error ? err.message : String(err),
+      error: error instanceof Error ? error.message : String(error),
     });
   }
 }
 
-export async function createLead(
+/** Called only after Zod and reCAPTCHA verification in the FINAL POST route. */
+export async function createLead<T extends CommonInput>(
   type: LeadType,
-  input: CommonInput & Record<string, unknown>,
+  input: T,
   ip: string,
+  options: { skipLegacyPipeline?: boolean } = {},
 ): Promise<CreateLeadResult> {
+  if (!REF_PREFIX[type]) throw new Error("Unsupported lead type");
+  if (!/^[A-Za-z0-9_-]{8,100}$/.test(input.idempotencyKey)) {
+    throw new Error("Invalid submission key");
+  }
+  const email = input.email?.trim().toLowerCase();
+  const fullName = input.fullName?.trim();
+  if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) || !fullName) {
+    throw new Error("Invalid lead contact details");
+  }
   await connectDb();
-  const edition = await getCurrentEdition();
-  const existing = await lookupKey(input.idempotencyKey);
+
+  const existing = await findByKey(input.idempotencyKey);
   if (existing) {
-    const result = sameLead(existing, type, edition.slug);
-    await enqueueSafely(existing._id); // Idempotent queue dedupe is required.
-    return result;
+    const response = matchExisting(existing, type, email);
+    if (!options.skipLegacyPipeline) await enqueueSafely(existing._id);
+    return response;
   }
 
+  const edition = await getCurrentEdition();
   const details = Object.fromEntries(
     Object.entries(input).filter(([key]) => !COMMON_KEYS.has(key)),
   );
 
-  for (let attempt = 0; attempt < 3; attempt++) {
-    // Using new Model().save() avoids ReturnType<typeof Model.create>
-    // which loses the selected overload's document type in TypeScript.
+  for (let attempt = 0; attempt < 4; attempt += 1) {
     const ref = humanRef(REF_PREFIX[type], edition.slug);
     try {
       const lead = new Lead({
@@ -104,9 +139,10 @@ export async function createLead(
         idempotencyKey: input.idempotencyKey,
         type,
         edition: edition.slug,
-        fullName: input.fullName,
-        email: input.email,
+        fullName,
+        email,
         phone: input.phone,
+        phoneCountry: input.phoneCountry,
         company: input.company,
         designation: input.designation,
         city: input.city,
@@ -114,31 +150,29 @@ export async function createLead(
         country: input.country,
         website: input.website,
         details,
+        // Previous public Zod forms have no affirmative consent input.
         privacyAccepted: false,
         marketingOptIn: false,
         attribution: input.attribution,
         stageHistory: [{ stage: "new", by: "web" }],
         ipHash: hmac(ip, "ip"),
       });
-
       await lead.save();
-      // Only run the queue after MongoDB has successfully saved the document.
-      await enqueueSafely(lead._id);
+      if (!options.skipLegacyPipeline) await enqueueSafely(lead._id);
       return { ref, id: String(lead._id), duplicate: false };
-    } catch (err) {
-      const error = err as { code?: number; keyPattern?: Record<string, unknown> };
-      if (error.code === 11000) {
-        const again = await lookupKey(input.idempotencyKey);
-        if (again) {
-          const result = sameLead(again, type, edition.slug);
-          await enqueueSafely(again._id);
-          return result;
+    } catch (error) {
+      const duplicate = error as { code?: number; keyPattern?: Record<string, unknown> };
+      if (duplicate?.code === 11000) {
+        const winner = await findByKey(input.idempotencyKey);
+        if (winner) {
+          const response = matchExisting(winner, type, email);
+          if (!options.skipLegacyPipeline) await enqueueSafely(winner._id);
+          return response;
         }
-        if (error.keyPattern?.ref) continue; // human-readable reference collision
+        if (duplicate.keyPattern?.ref) continue;
       }
-      throw err;
+      throw error;
     }
   }
-
   throw new Error("Could not allocate a unique reference");
 }

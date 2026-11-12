@@ -14,13 +14,19 @@ type PublicSubmissionOptions<S extends z.ZodTypeAny> = {
   rateKey: string;
   limit?: number;
   windowSec?: number;
+  /**
+   * Optional safe retry path. Must only return Response for an ALREADY FINALIZED
+   * MongoDB record after matching stable key, email, form and edition.
+   * A saved draft alone NEVER counts. Called before CAPTCHA/schema since the
+   * original token may have expired or been used; this callback must not write.
+   */
+  existingFinalSubmission?: (
+    input: Readonly<Record<string, unknown>>,
+    ip: string,
+  ) => Promise<Response | null>;
 };
 
-/**
- * One shared guard for ALL public lead / visitor POST routes.
- * Order matters: same-origin -> request read -> rate-limit -> schema -> captcha -> save.
- * CAPTCHA is never verified on the client, and never skipped by a route.
- */
+/** One shared guard for lead/visitor final POST routes; never use for autosave. */
 export async function handlePublicSubmission<S extends z.ZodTypeAny>(
   req: Request,
   opts: PublicSubmissionOptions<S>,
@@ -34,90 +40,81 @@ export async function handlePublicSubmission<S extends z.ZodTypeAny>(
   try {
     body = await readJson(req);
   } catch (err) {
-    const code = err instanceof Error ? err.message : "BAD_REQUEST";
-    return apiError(
-      code === "PAYLOAD_TOO_LARGE" ? 413 : 400,
-      code === "PAYLOAD_TOO_LARGE" ? code : "BAD_REQUEST",
-      "Invalid request body.",
-    );
+    const large = err instanceof Error && err.message === "PAYLOAD_TOO_LARGE";
+    return apiError(large ? 413 : 400, large ? "PAYLOAD_TOO_LARGE" : "BAD_REQUEST", "Invalid request body.");
   }
-
   if (!body || typeof body !== "object" || Array.isArray(body)) {
     return apiError(400, "BAD_REQUEST", "Invalid form submission.");
   }
 
   const input = body as Record<string, unknown>;
   const ip = clientIp(req);
-
   try {
-    const rl = await rateLimit(
+    const limited = await rateLimit(
       `${opts.rateKey}:${hmac(ip, "ip")}`,
       opts.limit ?? 8,
       opts.windowSec ?? 600,
     );
-    if (!rl.ok) {
+    if (!limited.ok) {
       return apiError(
-        429,
-        "RATE_LIMITED",
-        "Too many submissions. Please try again in a few minutes.",
-        undefined,
-        { "Retry-After": String(rl.retryAfterSec) },
+        429, "RATE_LIMITED", "Too many requests. Please retry later.", undefined,
+        { "Retry-After": String(limited.retryAfterSec) },
       );
     }
-  } catch (err) {
-    if (err instanceof DatabaseUnavailableError) {
-      return apiError(503, "SERVICE_UNAVAILABLE", "Submissions are temporarily unavailable. Please try again.");
-    }
+  } catch {
     log.error("form.rate_limit_unavailable", { key: opts.rateKey });
-    return apiError(503, "SERVICE_UNAVAILABLE", "Submissions are temporarily unavailable. Please try again.");
+    return apiError(503, "SERVICE_UNAVAILABLE", "Form submissions are temporarily unavailable.");
   }
 
-  // Never return fake success: a success response must mean a saved record exists.
-  if (typeof input.website_url_confirm === "string" && input.website_url_confirm.length > 0) {
-    log.warn("form.honeypot_rejected", { key: opts.rateKey });
+  if (input.website_url_confirm !== undefined && input.website_url_confirm !== "") {
     return apiError(400, "INVALID_SUBMISSION", "Unable to process this submission.");
+  }
+
+  // Must be an already-saved FINAL record, NEVER an autosaved draft.
+  // The route-specific callback must verify identity and form; key alone is insufficient.
+  if (opts.existingFinalSubmission) {
+    try {
+      const alreadySaved = await opts.existingFinalSubmission(input, ip);
+      if (alreadySaved) return alreadySaved;
+    } catch (error) {
+      if (error instanceof DatabaseUnavailableError) {
+        return apiError(503, "SERVICE_UNAVAILABLE", "Please retry shortly.");
+      }
+      log.error("form.retry_lookup_failed", { key: opts.rateKey });
+      return apiError(503, "SERVICE_UNAVAILABLE", "Please retry shortly.");
+    }
   }
 
   const parsed = opts.schema.safeParse(input);
   if (!parsed.success) {
-    return apiError(
-      422,
-      "VALIDATION_FAILED",
-      "Please correct the highlighted fields.",
-      flattenZod(parsed.error),
-    );
+    return apiError(422, "VALIDATION_FAILED", "Please correct the highlighted fields.", flattenZod(parsed.error));
   }
 
-  // Zod strips unrecognized fields (including captchaToken) from form output.
-  // Read the token from the raw request, verify once, and never store it in MongoDB.
+  // A token can survive Zod transforms or be stripped; use original input.
+  // Verify exactly once; downstream handle() MUST NOT verify again.
   const captcha = await verifyRecaptcha(input.recaptchaToken, ip);
   if (!captcha.ok) {
     if (captcha.reason === "unconfigured" || captcha.reason === "unavailable") {
       log.error("form.recaptcha_unavailable", { key: opts.rateKey, reason: captcha.reason });
-      return apiError(503, "RECAPTCHA_UNAVAILABLE", "Security verification is temporarily unavailable. Please try again.");
+      return apiError(503, "RECAPTCHA_UNAVAILABLE", "Security verification is temporarily unavailable.");
     }
-
     log.warn("form.recaptcha_rejected", { key: opts.rateKey, reason: captcha.reason });
     return apiError(
-      422,
-      "RECAPTCHA_FAILED",
-      "Security verification failed or expired. Please tick the box again.",
+      422, "RECAPTCHA_FAILED", "Security check failed or expired. Please tick the checkbox again.",
       { recaptchaToken: "Complete the security verification again." },
     );
   }
 
   try {
     return await handle(parsed.data, ip);
-  } catch (err) {
-    if (err instanceof DatabaseUnavailableError) {
-      log.error("form.db_unavailable", { key: opts.rateKey });
-      return apiError(503, "SERVICE_UNAVAILABLE", "We couldn't save your submission. Please try again.");
+  } catch (error) {
+    if (error instanceof DatabaseUnavailableError) {
+      return apiError(503, "SERVICE_UNAVAILABLE", "We could not save your submission. Please retry.");
     }
-
-    log.error("form.unhandled", {
+    log.error("form.submission_failed", {
       key: opts.rateKey,
-      error: err instanceof Error ? err.message : String(err),
+      error: error instanceof Error ? error.message : String(error),
     });
-    return apiError(500, "INTERNAL_ERROR", "Something went wrong. Please try again with a new verification.");
+    return apiError(500, "INTERNAL_ERROR", "Submission could not be processed. Please retry.");
   }
 }
