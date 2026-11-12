@@ -1,6 +1,8 @@
+
 import "server-only";
+
 import { connectDb } from "@/lib/db/connect";
-import { Lead, ConsentRecord, type LeadType } from "@/models/leads";
+import { Lead, type LeadType } from "@/models/leads";
 import { humanRef, hmac } from "@/lib/security/crypto";
 import { enqueueLeadPipeline } from "@/lib/jobs";
 import { getCurrentEdition } from "@/lib/data/edition";
@@ -26,69 +28,198 @@ type CommonInput = {
   state?: string;
   country?: string;
   website?: string;
-  privacyAccepted: true;
-  marketingOptIn: boolean;
+
+  // No mandatory privacy checkbox.
+  privacyAccepted?: boolean;
+
+  // Marketing is not enabled automatically.
+  marketingOptIn?: boolean;
+
   attribution?: Record<string, string | undefined>;
 };
 
 const COMMON_KEYS = new Set([
-  "idempotencyKey", "fullName", "email", "phone", "company", "designation", "city", "state", "country", "website",
-  "privacyAccepted", "marketingOptIn", "attribution", "website_url_confirm", "startedAt",
+  "idempotencyKey",
+  "fullName",
+  "email",
+  "phone",
+  "company",
+  "designation",
+  "city",
+  "state",
+  "country",
+  "website",
+  "privacyAccepted",
+  "marketingOptIn",
+  "attribution",
+  "website_url_confirm",
+  "startedAt",
+  "recaptchaToken",
 ]);
 
-export type CreateLeadResult = { ref: string; id: string; duplicate: boolean };
+export type CreateLeadResult = {
+  ref: string;
+  id: string;
+  duplicate: boolean;
+};
 
 /**
- * Primary write path. MongoDB is the system of record: the lead is persisted
- * first, then Sheets/email jobs are queued. Re-submitting the same
- * idempotencyKey returns the original reference instead of a duplicate.
+ * Saves a website enquiry.
+ *
+ * Privacy checkbox is not required.
+ * No consent is falsely recorded.
+ *
+ * MongoDB stores the primary lead.
+ * Integration jobs handle Sheets/emails.
  */
-export async function createLead(type: LeadType, input: CommonInput & Record<string, unknown>, ip: string): Promise<CreateLeadResult> {
+export async function createLead(
+  type: LeadType,
+  input: CommonInput & Record<string, unknown>,
+  ip: string
+): Promise<CreateLeadResult> {
   await connectDb();
-  const existing = await Lead.findOne({ idempotencyKey: input.idempotencyKey }).select("ref type").lean<{ _id: unknown; ref: string; type: string }>();
-  if (existing) return { ref: existing.ref, id: String(existing._id), duplicate: true };
+
+  const existing = await Lead.findOne({
+    idempotencyKey: input.idempotencyKey,
+  })
+    .select("ref type")
+    .lean<{
+      _id: unknown;
+      ref: string;
+      type: string;
+    }>();
+
+  if (existing) {
+    if (existing.type !== type) {
+      throw new Error(
+        "Submission key belongs to another form"
+      );
+    }
+
+    return {
+      ref: existing.ref,
+      id: String(existing._id),
+      duplicate: true,
+    };
+  }
 
   const edition = await getCurrentEdition();
-  const details = Object.fromEntries(Object.entries(input).filter(([k]) => !COMMON_KEYS.has(k)));
+
+  const details = Object.fromEntries(
+    Object.entries(input).filter(
+      ([key]) => !COMMON_KEYS.has(key)
+    )
+  );
 
   for (let attempt = 0; attempt < 3; attempt++) {
     try {
       const lead = await Lead.create({
-        ref: humanRef(REF_PREFIX[type], edition.slug),
+        ref: humanRef(
+          REF_PREFIX[type],
+          edition.slug
+        ),
+
         idempotencyKey: input.idempotencyKey,
+
         type,
         edition: edition.slug,
+
         fullName: input.fullName,
         email: input.email,
         phone: input.phone,
         company: input.company,
         designation: input.designation,
+
         city: input.city,
         state: input.state,
         country: input.country,
         website: input.website,
+
         details,
-        privacyAccepted: input.privacyAccepted,
-        marketingOptIn: input.marketingOptIn,
+
+        // Checkbox-free submission:
+        // never manufacture privacy consent.
+        privacyAccepted: false,
+
+        // No automatic marketing permission.
+        marketingOptIn: false,
+
         attribution: input.attribution,
-        stageHistory: [{ stage: "new", by: "web" }],
+
+        stageHistory: [
+          {
+            stage: "new",
+            by: "web",
+          },
+        ],
+
         ipHash: hmac(ip, "ip"),
       });
-      await ConsentRecord.insertMany([
-        { subjectEmail: lead.email, entity: "Lead", entityId: String(lead._id), purpose: "privacy_notice", granted: true, noticeVersion: process.env.PRIVACY_NOTICE_VERSION || "draft-2026-10", source: `form:${type}` },
-        { subjectEmail: lead.email, entity: "Lead", entityId: String(lead._id), purpose: "marketing", granted: Boolean(input.marketingOptIn), source: `form:${type}` },
-      ]);
+
+      /*
+       * No ConsentRecord.insertMany() here.
+       *
+       * The visitor did not give explicit
+       * privacy/marketing opt-in through a checkbox.
+       *
+       * Do not store granted: true.
+       */
+
       await enqueueLeadPipeline(lead._id);
-      return { ref: lead.ref, id: String(lead._id), duplicate: false };
+
+      return {
+        ref: lead.ref,
+        id: String(lead._id),
+        duplicate: false,
+      };
     } catch (err: unknown) {
-      const e = err as { code?: number; keyPattern?: Record<string, unknown> };
-      if (e.code === 11000 && e.keyPattern?.idempotencyKey) {
-        const again = await Lead.findOne({ idempotencyKey: input.idempotencyKey }).select("ref").lean<{ _id: unknown; ref: string }>();
-        if (again) return { ref: again.ref, id: String(again._id), duplicate: true };
+      const error = err as {
+        code?: number;
+        keyPattern?: Record<string, unknown>;
+      };
+
+      if (
+        error.code === 11000 &&
+        error.keyPattern?.idempotencyKey
+      ) {
+        const again = await Lead.findOne({
+          idempotencyKey: input.idempotencyKey,
+        })
+          .select("ref type")
+          .lean<{
+            _id: unknown;
+            ref: string;
+            type: string;
+          }>();
+
+        if (again) {
+          if (again.type !== type) {
+            throw new Error(
+              "Submission key belongs to another form"
+            );
+          }
+
+          return {
+            ref: again.ref,
+            id: String(again._id),
+            duplicate: true,
+          };
+        }
       }
-      if (e.code === 11000 && e.keyPattern?.ref) continue; // extremely rare ref collision → retry
+
+      // Retry rare human-readable reference collisions.
+      if (
+        error.code === 11000 &&
+        error.keyPattern?.ref
+      ) {
+        continue;
+      }
+
       throw err;
     }
   }
-  throw new Error("Could not allocate a unique reference");
+
+  throw new Error(
+    "Could not allocate a unique reference"
+  );
 }
