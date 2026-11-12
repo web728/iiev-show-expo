@@ -1,9 +1,8 @@
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import { randomUUID } from "node:crypto";
 import { startDb, stopDb, clearDb } from "./helpers/db";
-
+import { visitorRegistrationSchema, type VisitorRegistrationInput } from "@/lib/validation/forms";
 // Integration tests against a real MongoDB (mongodb-memory-server).
-
 let svc: {
   createLead: typeof import("@/lib/services/leads").createLead;
   registerVisitor: typeof import("@/lib/services/visitors").registerVisitor;
@@ -15,7 +14,6 @@ let svc: {
 };
 let M: typeof import("@/models/leads") & typeof import("@/models/content");
 const actor = { id: "000000000000000000000001", email: "staff@test" };
-
 beforeAll(async () => {
   await startDb();
   const [leads, visitors, checkin, jobs, mLeads, mContent] = await Promise.all([
@@ -30,17 +28,30 @@ beforeEach(async () => {
   await clearDb();
   delete process.env.SMTP_HOST;
 });
-
-const visitor = (o: Record<string, unknown> = {}) => ({
-  fullName: "Test Visitor", email: `v${Math.random().toString(36).slice(2)}@example.com`, phone: "9876543210", company: "Fleet Co", designation: "Manager",
-  industry: "Fleet operator / logistics", city: "Pune", state: "Maharashtra", country: "India", reasonForVisit: "Other", sectorInterests: ["electric-vehicles"],
-  privacyAccepted: true as const, marketingOptIn: false, idempotencyKey: randomUUID(), ...o,
-});
-
+/**
+ * Direct-service integration fixture, not an HTTP/CAPTCHA test.
+ * Parse using the actual schema so the service gets the required OUTPUT shape:
+ * phoneCountry, recaptchaToken, industry, normalized phone and consent flags.
+ * The placeholder token is never sent to Google by registerVisitor().
+ */
+function visitor(overrides: Record<string, unknown> = {}): VisitorRegistrationInput {
+  return visitorRegistrationSchema.parse({
+    fullName: "Test Visitor",
+    email: `v${randomUUID()}@example.com`,
+    phone: "9876543210",
+    phoneCountry: "IN",
+    company: "Fleet Co",
+    designation: "Manager",
+    industry: "Fleet operator / logistics",
+    country: "India",
+    idempotencyKey: randomUUID(),
+    recaptchaToken: "test-only-token-not-verified-by-direct-service",
+    ...overrides,
+  });
+}
 async function setApproval(mode: "auto" | "review") {
   await M.Edition.updateOne({ slug: "2027" }, { $set: { slug: "2027", editionNumber: 9, editionLabel: "9th Edition", year: 2027, isCurrent: true, startDate: "2027-11-11", endDate: "2027-11-13", dateLabel: "11–13 November 2027", registration: { visitorOpen: true, approvalMode: mode } } }, { upsert: true });
 }
-
 async function tokenFor(ref: string) {
   const { decrypt } = await import("@/lib/security/crypto");
   const v = await M.Visitor.findOne({ ref }).select("+badgeTokenEnc").lean<{ badgeTokenEnc: string }>();
@@ -48,6 +59,7 @@ async function tokenFor(ref: string) {
 }
 
 describe("lead submission (MongoDB is the system of record)", () => {
+
   it("persists, is idempotent on retry, and queues integration jobs", async () => {
     const key = randomUUID();
     const input = { idempotencyKey: key, fullName: "A", email: "a@example.com", company: "X", privacyAccepted: true as const, marketingOptIn: false, segments: ["ev-components"] };
@@ -58,10 +70,23 @@ describe("lead submission (MongoDB is the system of record)", () => {
     expect(await M.Lead.countDocuments()).toBe(1);
     const jobs = await M.IntegrationJob.find({ entityId: r1.id }).lean();
     expect(jobs.map((j) => j.kind).sort()).toEqual(["email_ack", "email_organiser", "sheets_append"]);
-    const lead = await M.Lead.findById(r1.id).lean<{ details: Record<string, unknown>; ipHash: string }>();
+    const lead = await M.Lead.findById(r1.id).lean<{ details: Record<string, unknown>; ipHash: string; privacyAccepted: boolean; marketingOptIn: boolean }>();
     expect(lead!.details.segments).toEqual(["ev-components"]);
     expect(lead!.ipHash).not.toContain("1.2.3.4");
-    expect(await M.ConsentRecord.countDocuments({ entityId: r1.id })).toBe(2);
+    // No consent checkbox exists: never claim affirmative consent or invent records.
+    expect(lead!.privacyAccepted).toBe(false);
+    expect(lead!.marketingOptIn).toBe(false);
+    expect(await M.ConsentRecord.countDocuments({ entityId: r1.id })).toBe(0);
+  });
+
+  it("public form flow skips legacy Sheet/email queue", async () => {
+    const r = await svc.createLead("contact", {
+      idempotencyKey: randomUUID(),
+      fullName: "Test Lead",
+      email: "lead@example.com",
+    }, "1.2.3.4", { skipLegacyPipeline: true });
+    expect(await M.Lead.countDocuments({ _id: r.id })).toBe(1);
+    expect(await M.IntegrationJob.countDocuments({ entityId: r.id })).toBe(0);
   });
 
   it("concurrent duplicate submissions create exactly one record", async () => {
@@ -101,6 +126,7 @@ describe("lead submission (MongoDB is the system of record)", () => {
 });
 
 describe("visitor registration, badges and check-in", () => {
+
   it("auto-approval issues an opaque badge; same key is idempotent; same email is deduped", async () => {
     await setApproval("auto");
     const input = visitor();
@@ -190,6 +216,7 @@ describe("visitor registration, badges and check-in", () => {
 });
 
 describe("rate limiting", () => {
+
   it("blocks after the limit within a window", async () => {
     const { rateLimit } = await import("@/lib/security/rate-limit");
     const results = [];

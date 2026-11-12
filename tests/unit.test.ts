@@ -5,7 +5,7 @@ import { can, ROLES, ROLE_PERMISSIONS } from "@/lib/auth/rbac";
 import { totpCode, verifyTotp, base32Decode, base32Encode, generateTotpSecret } from "@/lib/security/totp";
 import { encrypt, decrypt, humanRef, safeEqual } from "@/lib/security/crypto";
 import { parseQrPayload, qrPayload, issueBadgeToken } from "@/lib/badge/token";
-import { stallEnquirySchema, visitorRegistrationSchema, phoneField } from "@/lib/validation/forms";
+import { stallEnquirySchema, visitorRegistrationSchema } from "@/lib/validation/forms";
 import { istLocalToDate, dateToIstLocal } from "@/lib/admin/form-parse";
 import { slugify } from "@/lib/format";
 import { sniffType } from "@/lib/storage";
@@ -103,52 +103,46 @@ describe("badge QR payload", () => {
   });
 });
 
-
 describe("form validation", () => {
-  const idempotencyKey =
-    "3b241101-e2bb-4255-8caf-4136c566a962";
+  // Schema tests only: this placeholder is never accepted as a verified Google token.
+  const recaptchaToken = "schema-test-token-not-google-verified";
+  const idempotencyKey = "3b241101-e2bb-4255-8caf-4136c566a962";
 
-  // Exhibitor enquiry: only current required fields.
   const stallBase = {
     fullName: "Asha Rao",
     company: "VoltParts",
     designation: "Head of Sales",
     email: "ASHA@Example.com ",
-    phone: "098765 43210",
+    // Users type the national number; UI selects country code separately.
+    phone: "9876543210",
+    phoneCountry: "IN",
     country: "India",
     productDescription: "Hub motors and controllers",
     idempotencyKey,
+    recaptchaToken,
   };
 
-  // Visitor registration: only current required fields.
   const visitorBase = {
     fullName: "Asha Rao",
     company: "VoltParts",
     designation: "Head of Sales",
     email: "ASHA@Example.com ",
-    phone: "098765 43210",
+    phone: "9876543210",
+    phoneCountry: "IN",
     country: "India",
     idempotencyKey,
+    recaptchaToken,
   };
 
-  it("accepts a valid exhibitor enquiry", () => {
+  it("accepts a valid stall enquiry and normalizes phone to E.164", () => {
     const result = stallEnquirySchema.safeParse(stallBase);
-
-    expect(result.success).toBe(true);
-
-    if (!result.success) {
-      throw new Error(
-        JSON.stringify(result.error.flatten())
-      );
-    }
-
+    if (!result.success) throw new Error(JSON.stringify(result.error.flatten()));
     expect(result.data.fullName).toBe("Asha Rao");
     expect(result.data.company).toBe("VoltParts");
     expect(result.data.email).toBe("asha@example.com");
-    expect(result.data.phone).toBe("09876543210");
-    expect(result.data.productDescription).toBe(
-      "Hub motors and controllers"
-    );
+    expect(result.data.phoneCountry).toBe("IN");
+    expect(result.data.phone).toBe("+919876543210");
+    expect(result.data.productDescription).toBe("Hub motors and controllers");
   });
 
   it("does not require a privacy checkbox", () => {
@@ -157,118 +151,79 @@ describe("form validation", () => {
       privacyAccepted: false,
       marketingOptIn: false,
     });
-
-    expect(result.success).toBe(true);
-
-    if (!result.success) {
-      throw new Error(
-        JSON.stringify(result.error.flatten())
-      );
-    }
-
+    if (!result.success) throw new Error(JSON.stringify(result.error.flatten()));
     expect(result.data.privacyAccepted).toBe(false);
     expect(result.data.marketingOptIn).toBe(false);
   });
 
-  it("does not invent consent when omitted", () => {
-    const result = stallEnquirySchema.safeParse(stallBase);
-
-    expect(result.success).toBe(true);
-
-    if (!result.success) {
-      throw new Error(
-        JSON.stringify(result.error.flatten())
-      );
-    }
-
-    expect(result.data.privacyAccepted).toBe(false);
-    expect(result.data.marketingOptIn).toBe(false);
-  });
-
-  it("rejects missing exhibitor required fields", () => {
+  it("does not invent consent even if client sends true", () => {
     const result = stallEnquirySchema.safeParse({
       ...stallBase,
-      company: "",
-      productDescription: "",
+      privacyAccepted: true,
+      marketingOptIn: true,
     });
+    if (!result.success) throw new Error(JSON.stringify(result.error.flatten()));
+    expect(result.data.privacyAccepted).toBe(false);
+    expect(result.data.marketingOptIn).toBe(false);
+  });
 
+  it("rejects missing required stall fields", () => {
+    const result = stallEnquirySchema.safeParse({
+      ...stallBase, company: "", productDescription: "",
+    });
     expect(result.success).toBe(false);
-
     if (result.success) return;
-
-    const paths = result.error.issues.map(
-      (issue) => issue.path[0]
-    );
-
+    const paths = result.error.issues.map((issue) => issue.path[0]);
     expect(paths).toContain("company");
     expect(paths).toContain("productDescription");
   });
 
   it("accepts a valid visitor registration", () => {
-    const result =
-      visitorRegistrationSchema.safeParse(visitorBase);
-
-    expect(result.success).toBe(true);
-
-    if (!result.success) {
-      throw new Error(
-        JSON.stringify(result.error.flatten())
-      );
-    }
-
+    const result = visitorRegistrationSchema.safeParse(visitorBase);
+    if (!result.success) throw new Error(JSON.stringify(result.error.flatten()));
     expect(result.data.fullName).toBe("Asha Rao");
     expect(result.data.email).toBe("asha@example.com");
     expect(result.data.country).toBe("India");
+    expect(result.data.phone).toBe("+919876543210");
     expect(result.data.privacyAccepted).toBe(false);
   });
 
   it("accepts optional business category", () => {
     const result = visitorRegistrationSchema.safeParse({
-      ...visitorBase,
-      industry: "EV Components",
+      ...visitorBase, industry: "EV Components",
     });
-
-    expect(result.success).toBe(true);
-
-    if (!result.success) {
-      throw new Error(
-        JSON.stringify(result.error.flatten())
-      );
-    }
-
+    if (!result.success) throw new Error(JSON.stringify(result.error.flatten()));
     expect(result.data.industry).toBe("EV Components");
   });
 
-  it("rejects missing visitor required fields", () => {
+  it("rejects missing required visitor fields", () => {
     const result = visitorRegistrationSchema.safeParse({
-      ...visitorBase,
-      fullName: "",
-      country: "",
+      ...visitorBase, fullName: "", country: "",
     });
-
     expect(result.success).toBe(false);
-
     if (result.success) return;
-
-    const paths = result.error.issues.map(
-      (issue) => issue.path[0]
-    );
-
+    const paths = result.error.issues.map((issue) => issue.path[0]);
     expect(paths).toContain("fullName");
     expect(paths).toContain("country");
   });
 
+  it("requires a CAPTCHA token in final-submit schema", () => {
+    const { recaptchaToken: _unused, ...withoutCaptcha } = visitorBase;
+    expect(visitorRegistrationSchema.safeParse(withoutCaptcha).success).toBe(false);
+  });
+
   it.each([
-    ["9876543210", true],
-    ["+91 98765 43210", true],
-    ["+44 20 7946 0958", true],
-    ["12345", false],
-    ["5876543210", false],
-    ["+0123", false],
-  ])("phone %s → %s", (phone, valid) => {
-    expect(phoneField.safeParse(phone).success).toBe(
-      valid
-    );
+    { phone: "9876543210", phoneCountry: "IN", valid: true },
+    { phone: "+91 98765 43210", phoneCountry: "IN", valid: true },
+    { phone: "020 7946 0958", phoneCountry: "GB", valid: true },
+    { phone: "12345", phoneCountry: "IN", valid: false },
+    { phone: "5876543210", phoneCountry: "IN", valid: false },
+    { phone: "+0123", phoneCountry: "IN", valid: false },
+    { phone: "9876543210", phoneCountry: "ZZ", valid: false },
+  ])("phone $phone / $phoneCountry valid=$valid", ({ phone, phoneCountry, valid }) => {
+    // phoneField checks syntax; full schema checks country-specific validity.
+    const result = stallEnquirySchema.safeParse({ ...stallBase, phone, phoneCountry });
+    expect(result.success).toBe(valid);
   });
 });
 
@@ -287,7 +242,7 @@ describe("misc", () => {
     expect(sniffType(Buffer.from("%PDF-1.7 xxxxxxxx"))).toBe("application/pdf");
     expect(sniffType(Buffer.from("MZ\x90\x00 executable....."))).toBeNull();
   });
-  it("legacy redirects map every old iievshow.com menu URL", () => {
+  it("legacy redirects map every old iievshow\.com menu URL", () => {
     const froms = legacyRedirects.map((r) => r.from);
     for (const old of ["/about-us/", "/why-exhibit/", "/exhibitor-registration/", "/why-visit/", "/visitor-registration/", "/contact-us/", "/brochure/"]) expect(froms).toContain(old);
     for (const r of legacyRedirects) expect(r.to.startsWith("/")).toBe(true);
