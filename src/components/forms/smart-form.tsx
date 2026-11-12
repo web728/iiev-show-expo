@@ -64,7 +64,6 @@ export function SmartForm({ endpoint, fields, submitLabel, consentPurpose, formN
 
   const [restoring, setRestoring] = useState(true);
 
-  const [draftState, setDraftState] = useState<"idle" | "saving" | "saved" | "failed">("idle");
 
   const formRef = useRef<HTMLFormElement>(null);
 
@@ -154,7 +153,6 @@ export function SmartForm({ endpoint, fields, submitLabel, consentPurpose, formN
       }
     }
     pendingRestore.current = null;
-    setDraftState("saved");
   }, [country, fields, restoring]);
 
   const onCaptcha = useCallback((token: string) => { setCaptchaToken(token); setCaptchaError(""); }, []);
@@ -212,13 +210,11 @@ export function SmartForm({ endpoint, fields, submitLabel, consentPurpose, formN
       typeof value === "string" ? value.trim().length > 0 : Array.isArray(value) && value.length > 0
     );
     if (!hasValue) return;
-    setDraftState("saving");
     try {
       window.localStorage.setItem(`iiev-local-draft:${formName}`,
         JSON.stringify({ savedAt: Date.now(), data }));
-      setDraftState("saved");
     } catch {
-      setDraftState("failed");
+      // Storage can be unavailable; form submission remains usable.
     }
   }, [collect, formName, restoring]);
 
@@ -407,11 +403,6 @@ export function SmartForm({ endpoint, fields, submitLabel, consentPurpose, formN
 
 
 
-    <div className="rounded-xl border border-[#DCE7DE] bg-[#F7FAF7] px-4 py-3 text-xs leading-6 text-[#526357]">
-      <p>Your progress is saved automatically on this device for up to 7 days. It is not sent to the organiser until you submit the form.</p>
-      <p className="mt-1">On submission, your information is used to {consentPurpose}. See the <Link href="/privacy-policy/" target="_blank" rel="noopener noreferrer" className="font-semibold text-[#16893F] underline underline-offset-4">Privacy Policy</Link>.</p>
-      <p role="status" className="mt-1 font-semibold text-[#16893F]">{draftState === "saving" ? "Saving progress…" : draftState === "saved" ? "Progress saved on this device." : draftState === "failed" ? "Browser autosave is unavailable." : "Browser autosave is on."}</p>
-    </div>
 
     <div className="space-y-4 border-t border-[#E5EDE6] pt-6">
 
