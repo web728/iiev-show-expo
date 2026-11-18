@@ -518,10 +518,7 @@ export function SmartForm({
           <>
             <CheckCircle2 className="size-12 text-[#23A455]" aria-hidden="true" />
             <h2 className="mt-5 text-2xl font-extrabold text-[#102A1E]">Submission Received</h2>
-            <p className="mt-3 text-sm leading-7 text-[#526357]">{data.message || "Your form has been submitted."}</p>
-            {(data.ref || data.reference) && <p className="mt-4 rounded-lg bg-white p-4 text-sm font-bold text-[#102A1E]">
-              Reference: {data.ref || data.reference}
-            </p>}
+          
             <Link href="/" className="mt-5 inline-flex items-center gap-2 text-sm font-bold text-[#16893F]">
               Home <ArrowRight size={16} />
             </Link>

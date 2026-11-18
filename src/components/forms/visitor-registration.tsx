@@ -18,11 +18,7 @@ function VisitorSuccess({ data }: { data: SuccessData }) {
       <p className="mt-3 text-sm leading-7 text-[#526357]">
         {data.message || "Your visitor registration has been received successfully."}
       </p>
-      {reference && (
-        <p className="mt-5 rounded-xl bg-white px-5 py-4 text-sm font-bold text-[#102A1E]">
-          Registration ID: <span className="font-mono">{reference}</span>
-        </p>
-      )}
+      
     </div>
   );
 }

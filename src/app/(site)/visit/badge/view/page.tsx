@@ -77,7 +77,7 @@ export default async function BadgeViewPage({ searchParams }: PageProps<"/visit/
           <ul className="grid gap-2 text-sm text-ink-muted">
             <li>• Your badge is personal and non-transferable.</li>
             <li>• Don&apos;t share screenshots of your QR code publicly.</li>
-            <li>• If your details are wrong, <Link href="/contact/" className="font-semibold text-brand-blue underline">contact us</Link> with your registration ID.</li>
+            <li>• If your details are wrong, <Link href="/contact/" className="font-semibold text-brand-blue underline">contact us.</Link></li>
           </ul>
         </div>
       </div>

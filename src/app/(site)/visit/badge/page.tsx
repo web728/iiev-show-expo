@@ -20,7 +20,7 @@ export default async function BadgeRetrievePage() {
       <FormLayout
         aside={
           <>
-            <AsideCard title="Need to change your details?">Contact us with your registration ID. For security, corrections to the name on a badge are made by the registration team, who will reissue your badge.</AsideCard>
+            <AsideCard title="Need to change your details?">Contact us. For security, corrections to the name on a badge are made by the registration team, who will reissue your badge.</AsideCard>
             <ContactAside settings={settings} topic="your registration" />
           </>
         }

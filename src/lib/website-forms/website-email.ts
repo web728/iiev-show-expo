@@ -19,7 +19,7 @@ export async function sendWebsiteNotification(args: {
   const { recipient, form, data, submittedAt, ref } = args;
   const row = websiteSheetRow(form, data, "submitted", submittedAt, { finalRef: ref });
   const rows: EmailField[] = [
-    ["Reference", ref],
+   
     ["Form", FORM_LABELS[form]],
     ["Submitted", `${formatIst(submittedAt)} IST`],
     ["Company", row[3]],

@@ -34,7 +34,7 @@ export async function sendWebsiteNotification(args: {
   const subject = `[IIEV Show Website] ${label} — ${contact}`.slice(0, 180).replace(/[\r\n]/g, " ");
   const row = websiteSheetRow(form, data, "submitted", submittedAt);
   const fields: [string, string][] = [
-    ["Reference", ref], ["Form", label], ["Date", row[0] ?? ""], ["Company", row[3] ?? ""],
+     ["Form", label], ["Date", row[0] ?? ""], ["Company", row[3] ?? ""],
     ["Contact Person", row[4] ?? ""], ["Designation", row[5] ?? ""], ["Email", row[6] ?? ""],
     ["Mobile / WhatsApp", row[7] ?? ""], ["Website", row[8] ?? ""], ["Address", row[9] ?? ""],
     ["Country", row[10] ?? ""], ["Area of Interest", row[11] ?? ""], ["Message / Details", row[13] ?? ""],

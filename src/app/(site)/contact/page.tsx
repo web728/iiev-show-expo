@@ -369,8 +369,7 @@ export default async function ContactPage() {
                 <p className="mt-3 text-[12px] leading-7 text-[#526357]">
                   Need assistance with visitor
                   registration or accessing your
-                  badge? Include your registration
-                  reference when contacting the team.
+                  badge?  
                 </p>
 
                 <p className="mt-3 text-[12px] leading-6 text-[#526357]">
