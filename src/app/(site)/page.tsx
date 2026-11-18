@@ -200,10 +200,7 @@ export default function HomePage() {
 
       <Reveal className="lg:col-span-3">
         <div className="flex items-center gap-3">
-          <span
-            aria-hidden="true"
-            className="h-[2px] w-8 shrink-0 bg-brand"
-          />
+           
 
           <Eyebrow light>
             Why Pune

@@ -1,18 +1,30 @@
+
 import type { NextConfig } from "next";
 import { legacyRedirects } from "./src/config/redirects";
 
+/* =========================================================
+   IIEV SHOW — NEXT.JS CONFIGURATION
+========================================================= */
+
 const isProd = process.env.NODE_ENV === "production";
 
-// Content-Security-Policy kept compatible with Next.js inline bootstrapping.
-// Tighten with nonces once analytics/tag choices are final (see docs/DEPLOYMENT_GUIDE.md).
+/* =========================================================
+   CONTENT SECURITY POLICY
+========================================================= */
 
 const csp = [
   "default-src 'self'",
 
-  // Next.js + Google Analytics + reCAPTCHA v2
-  `script-src 'self' 'unsafe-inline'${
-    isProd ? "" : " 'unsafe-eval'"
-  } https://www.googletagmanager.com https://www.google.com/recaptcha/ https://www.gstatic.com/recaptcha/ https://www.recaptcha.net/recaptcha/`,
+  [
+    "script-src",
+    "'self'",
+    "'unsafe-inline'",
+    ...(isProd ? [] : ["'unsafe-eval'"]),
+    "https://www.googletagmanager.com",
+    "https://www.google.com/recaptcha/",
+    "https://www.gstatic.com/recaptcha/",
+    "https://www.recaptcha.net/recaptcha/",
+  ].join(" "),
 
   "style-src 'self' 'unsafe-inline'",
 
@@ -20,11 +32,24 @@ const csp = [
 
   "font-src 'self' data:",
 
-  // Analytics + reCAPTCHA network requests
-  "connect-src 'self' https://www.google-analytics.com https://*.google-analytics.com https://www.googletagmanager.com https://www.google.com https://www.gstatic.com https://www.recaptcha.net",
+  [
+    "connect-src",
+    "'self'",
+    "https://www.google-analytics.com",
+    "https://*.google-analytics.com",
+    "https://www.googletagmanager.com",
+    "https://www.google.com",
+    "https://www.gstatic.com",
+    "https://www.recaptcha.net",
+  ].join(" "),
 
-  // reCAPTCHA challenge iframe + existing video embeds
-  "frame-src https://www.google.com https://recaptcha.google.com https://www.recaptcha.net https://www.youtube-nocookie.com",
+  [
+    "frame-src",
+    "https://www.google.com",
+    "https://recaptcha.google.com",
+    "https://www.recaptcha.net",
+    "https://www.youtube-nocookie.com",
+  ].join(" "),
 
   "media-src 'self' blob:",
 
@@ -34,36 +59,120 @@ const csp = [
   "frame-ancestors 'none'",
 ].join("; ");
 
+/* =========================================================
+   SECURITY HEADERS
+========================================================= */
 
 const securityHeaders = [
-  { key: "Content-Security-Policy", value: csp },
-  { key: "X-Content-Type-Options", value: "nosniff" },
-  { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
-  { key: "X-Frame-Options", value: "DENY" },
-  // camera=(self) is required by the authorised check-in scanner
-  { key: "Permissions-Policy", value: "camera=(self), microphone=(), geolocation=(), interest-cohort=()" },
-  ...(isProd ? [{ key: "Strict-Transport-Security", value: "max-age=63072000; includeSubDomains; preload" }] : []),
+  {
+    key: "Content-Security-Policy",
+    value: csp,
+  },
+  {
+    key: "X-Content-Type-Options",
+    value: "nosniff",
+  },
+  {
+    key: "Referrer-Policy",
+    value: "strict-origin-when-cross-origin",
+  },
+  {
+    key: "X-Frame-Options",
+    value: "DENY",
+  },
+  {
+    key: "Permissions-Policy",
+    value:
+      "camera=(self), microphone=(), geolocation=()",
+  },
+
+  ...(isProd
+    ? [
+        {
+          key: "Strict-Transport-Security",
+          value:
+            "max-age=63072000; includeSubDomains; preload",
+        },
+      ]
+    : []),
 ];
+
+/* =========================================================
+   NEXT.JS CONFIGURATION
+========================================================= */
 
 const nextConfig: NextConfig = {
   trailingSlash: true,
-  // Browser→terminal log forwarding writes into .next/dev/logs on every page
-  // load, which re-triggered dev compiles and reload loops in the preview pane.
-  logging: { browserToTerminal: false },
+
   poweredByHeader: false,
+
   reactStrictMode: true,
-  // Badge PDFs, emails and OG images read these from disk at runtime (serverless tracing).
-  outputFileTracingIncludes: {
-    "/**": ["./public/brand/**", "./node_modules/@fontsource/montserrat/files/montserrat-latin-{400,600,800}-normal.woff"],
+
+  /* =====================================================
+     DEVELOPMENT LOGGING
+  ===================================================== */
+
+  logging: {
+    browserToTerminal: false,
   },
-  serverExternalPackages: ["mongoose", "pdf-lib", "nodemailer", "google-auth-library", "bcryptjs"],
+
+  /* =====================================================
+     IMAGE HANDLING
+
+     FIX FOR:
+     /_next/image → 402 Payment Required
+
+     Original public images are delivered directly.
+     No code changes required in next/image components.
+  ===================================================== */
+
   images: {
-    formats: ["image/avif", "image/webp"],
+    unoptimized: true,
+
+    formats: [
+      "image/avif",
+      "image/webp",
+    ],
+
     qualities: [60, 75, 90],
+
     remotePatterns: process.env.MEDIA_CDN_HOST
-      ? [{ protocol: "https", hostname: process.env.MEDIA_CDN_HOST }]
+      ? [
+          {
+            protocol: "https",
+            hostname: process.env.MEDIA_CDN_HOST,
+          },
+        ]
       : [],
   },
+
+  /* =====================================================
+     SERVERLESS FILE TRACING
+  ===================================================== */
+
+  outputFileTracingIncludes: {
+    "/**": [
+      "./public/brand/**",
+      "./node_modules/@fontsource/montserrat/files/montserrat-latin-{400,600,800}-normal.woff",
+    ],
+  },
+
+  /* =====================================================
+     SERVER PACKAGES
+  ===================================================== */
+
+  serverExternalPackages: [
+    "mongoose",
+    "pdf-lib",
+    "nodemailer",
+    "google-auth-library",
+    "bcryptjs",
+  ],
+
+  /* =====================================================
+     TURBOPACK
+  ===================================================== */
+
   turbopack: {
     rules: {
       "*.css": {
@@ -72,15 +181,54 @@ const nextConfig: NextConfig = {
       },
     },
   },
+
+  /* =====================================================
+     HTTP HEADERS
+  ===================================================== */
+
   async headers() {
     return [
-      { source: "/:path*", headers: securityHeaders },
-      { source: "/admin/:path*", headers: [{ key: "X-Robots-Tag", value: "noindex, nofollow" }] },
-      { source: "/api/:path*", headers: [{ key: "X-Robots-Tag", value: "noindex, nofollow" }, { key: "Cache-Control", value: "no-store" }] },
+      {
+        source: "/:path*",
+        headers: securityHeaders,
+      },
+
+      {
+        source: "/admin/:path*",
+        headers: [
+          {
+            key: "X-Robots-Tag",
+            value: "noindex, nofollow",
+          },
+        ],
+      },
+
+      {
+        source: "/api/:path*",
+        headers: [
+          {
+            key: "X-Robots-Tag",
+            value: "noindex, nofollow",
+          },
+          {
+            key: "Cache-Control",
+            value: "no-store",
+          },
+        ],
+      },
     ];
   },
+
+  /* =====================================================
+     LEGACY REDIRECTS
+  ===================================================== */
+
   async redirects() {
-    return legacyRedirects.map((r) => ({ source: r.from, destination: r.to, statusCode: 301 as const }));
+    return legacyRedirects.map((route) => ({
+      source: route.from,
+      destination: route.to,
+      statusCode: 301 as const,
+    }));
   },
 };
 
