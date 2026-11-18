@@ -1,22 +1,12 @@
+
 "use client";
 
+import { useEffect, useState, useSyncExternalStore } from "react";
 import Link from "next/link";
 import Script from "next/script";
 import { usePathname } from "next/navigation";
-import {
-  useEffect,
-  useState,
-  useSyncExternalStore,
-} from "react";
-import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
-import {
-  ArrowUpRight,
-  Check,
-  Cookie,
-  LockKeyhole,
-  ShieldCheck,
-  X,
-} from "lucide-react";
+import { AnimatePresence, motion } from "framer-motion";
+import { ArrowUpRight, ShieldCheck, X } from "lucide-react";
 
 import {
   captureAttribution,
@@ -25,7 +15,19 @@ import {
 } from "@/lib/analytics/client";
 
 const GA_ID = process.env.NEXT_PUBLIC_GA_ID;
+
+type ConsentState =
+  | "loading"
+  | "none"
+  | "essential"
+  | "analytics";
+
 const ease = [0.22, 1, 0.36, 1] as const;
+
+/* =========================================================
+   CONSENT STORE
+   Keeps server and initial client render consistent.
+========================================================= */
 
 function subscribe(callback: () => void) {
   window.addEventListener("iiev:consent", callback);
@@ -35,345 +37,325 @@ function subscribe(callback: () => void) {
   };
 }
 
-function snapshot() {
-  const consent = readConsent();
+function getSnapshot(): ConsentState {
+  const saved = readConsent();
 
-  return consent
-    ? consent.analytics
-      ? "analytics"
-      : "essential"
-    : "none";
+  if (!saved) return "none";
+
+  return saved.analytics ? "analytics" : "essential";
 }
 
-function serverSnapshot() {
-  return "ssr";
+function getServerSnapshot(): ConsentState {
+  return "loading";
 }
+
+/* =========================================================
+   GOOGLE ANALYTICS
+   Loaded only when analytics consent exists.
+========================================================= */
+
+function ConsentAnalytics() {
+  const pathname = usePathname();
+  const [ready, setReady] = useState(false);
+
+  useEffect(() => {
+    if (!ready || !GA_ID) return;
+
+    window.gtag?.("event", "page_view", {
+      page_path: pathname,
+      page_location: window.location.href,
+      page_title: document.title,
+    });
+  }, [ready, pathname]);
+
+  if (!GA_ID) return null;
+
+  return (
+    <>
+      <Script
+        id="iiev-analytics-config"
+        strategy="afterInteractive"
+      >
+        {`
+          window.dataLayer = window.dataLayer || [];
+          window.gtag = window.gtag || function() {
+            window.dataLayer.push(arguments);
+          };
+          window.gtag("js", new Date());
+          window.gtag("config", ${JSON.stringify(GA_ID)}, {
+            send_page_view: false
+          });
+        `}
+      </Script>
+
+      <Script
+        src={`https://www.googletagmanager.com/gtag/js?id=${encodeURIComponent(
+          GA_ID
+        )}`}
+        strategy="afterInteractive"
+        onReady={() => setReady(true)}
+      />
+    </>
+  );
+}
+
+/* =========================================================
+   MAIN CONSENT MANAGER
+========================================================= */
 
 export function ConsentManager() {
   const consent = useSyncExternalStore(
     subscribe,
-    snapshot,
-    serverSnapshot
+    getSnapshot,
+    getServerSnapshot
   );
 
   const [reopened, setReopened] = useState(false);
-  const reducedMotion = useReducedMotion();
-  const pathname = usePathname();
 
-  const analytics = consent === "analytics";
+  const analyticsAllowed = consent === "analytics";
+
   const visible =
-    consent !== "ssr" &&
+    consent !== "loading" &&
     (consent === "none" || reopened);
 
   useEffect(() => {
     captureAttribution();
 
-    const onOpen = () => setReopened(true);
+    const openSettings = () => {
+      setReopened(true);
+    };
 
     window.addEventListener(
       "iiev:open-consent",
-      onOpen
+      openSettings
     );
 
     return () => {
       window.removeEventListener(
         "iiev:open-consent",
-        onOpen
+        openSettings
       );
     };
   }, []);
 
-  useEffect(() => {
-    if (!analytics || !GA_ID) return;
-
-    window.gtag?.("event", "page_view", {
-      page_path: pathname,
-    });
-  }, [analytics, pathname]);
-
-  const choose = (allowAnalytics: boolean) => {
+  const saveChoice = (allowAnalytics: boolean) => {
     writeConsent(allowAnalytics);
     setReopened(false);
   };
 
-  const close = () => {
+  const closeSettings = () => {
     if (consent !== "none") {
       setReopened(false);
     }
   };
 
-  // Inner pieces rise in one after another once the panel is open.
-  const rise = (i: number) => ({
-    initial: reducedMotion ? false : { opacity: 0, y: 14 },
-    animate: { opacity: 1, y: 0 },
-    transition: {
-      duration: reducedMotion ? 0 : 0.6,
-      delay: reducedMotion ? 0 : 0.18 + i * 0.07,
-      ease,
-    },
-  });
-
   return (
     <>
-      {analytics && GA_ID ? (
-        <>
-          <Script
-            src={`https://www.googletagmanager.com/gtag/js?id=${encodeURIComponent(
-              GA_ID
-            )}`}
-            strategy="afterInteractive"
-          />
+      {/* ===============================================
+          ANALYTICS — CONSENT REQUIRED
+      =============================================== */}
 
-          <Script id="iiev-ga4" strategy="afterInteractive">
-            {`
-              window.dataLayer = window.dataLayer || [];
-              window.gtag = function(){window.dataLayer.push(arguments);};
-              window.gtag('js', new Date());
-              window.gtag('config', ${JSON.stringify(GA_ID)}, {
-                anonymize_ip: true,
-                send_page_view: false
-              });
-            `}
-          </Script>
-        </>
-      ) : null}
+      {analyticsAllowed && <ConsentAnalytics />}
 
-      <AnimatePresence>
-        {visible ? (
+      {/* ===============================================
+          COOKIE NOTICE
+      =============================================== */}
+
+      <AnimatePresence initial={false}>
+        {visible && (
           <motion.div
-            key="iiev-consent-panel"
-            initial={
-              reducedMotion
-                ? false
-                : { opacity: 0, y: 36, scale: 0.97 }
-            }
+            key="cookie-consent"
+            initial={{
+              opacity: 0,
+              y: 20,
+            }}
             animate={{
               opacity: 1,
               y: 0,
-              scale: 1,
-              transition: reducedMotion
-                ? { duration: 0 }
-                : { type: "spring", stiffness: 240, damping: 28, mass: 0.9 },
             }}
-            exit={
-              reducedMotion
-                ? { opacity: 0, transition: { duration: 0 } }
-                : {
-                    opacity: 0,
-                    y: 20,
-                    scale: 0.98,
-                    transition: { duration: 0.35, ease },
-                  }
-            }
-            className="no-print fixed inset-x-3 bottom-3 z-[100] mx-auto w-auto max-w-[510px] sm:inset-x-auto sm:bottom-7 sm:left-7 sm:w-[510px]"
+            exit={{
+              opacity: 0,
+              y: 12,
+            }}
+            transition={{
+              duration: 0.35,
+              ease,
+            }}
+            className="no-print fixed inset-x-4 bottom-4 z-[100] mx-auto max-w-[440px] sm:inset-x-auto sm:bottom-7 sm:left-7 sm:mx-0 sm:w-[440px] motion-reduce:transform-none"
           >
             <section
               role="region"
-              aria-label="Cookie preferences"
-              className="relative overflow-hidden rounded-[22px] border border-[#DCE7DE] bg-white shadow-[0_28px_70px_-28px_rgba(0,20,51,0.45)]"
+              aria-labelledby="cookie-consent-title"
+              aria-describedby="cookie-consent-description"
+              className="overflow-hidden rounded-xl border border-[#DDE7DF] bg-white shadow-[0_18px_55px_rgba(0,25,15,0.16)]"
             >
-              {/* Header: navy, with the brand's green arc in the corner */}
-              <div className="relative overflow-hidden bg-[#001433] px-5 pb-5 pt-5 text-white sm:px-6">
-                <svg
-                  aria-hidden="true"
-                  viewBox="0 0 200 200"
-                  fill="none"
-                  className="pointer-events-none absolute -right-20 -top-24 h-60 w-60"
-                >
-                  <defs>
-                    <linearGradient id="iiev-consent-arc" x1="0" y1="0" x2="1" y2="1">
-                      <stop offset="0" stopColor="#3BB36B" />
-                      <stop offset="1" stopColor="#1D8043" />
-                    </linearGradient>
-                  </defs>
-                  <circle cx="100" cy="100" r="86" stroke="url(#iiev-consent-arc)" strokeWidth="18" />
-                  <circle cx="100" cy="100" r="99" stroke="#3BB36B" strokeOpacity="0.4" strokeWidth="1" strokeDasharray="3 6" />
-                </svg>
+              {/* ======================================
+                  HEADER
+              ====================================== */}
 
-                <div className="relative flex items-start justify-between gap-4">
-                  <div className="flex items-center gap-3">
-                    <div className="flex size-11 shrink-0 items-center justify-center rounded-full border border-[#3BB36B]/60 bg-[#1D8043]/20">
+              <div className="border-b border-[#E8EEE9] px-5 py-5 sm:px-6">
+                <div className="flex items-start justify-between gap-4">
+                  <div className="flex min-w-0 items-start gap-3">
+                    {/* Brand mark */}
+                    <div className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-[#EDF6EF] text-[#16893F]">
                       <ShieldCheck
                         size={21}
                         strokeWidth={1.7}
-                        className="text-[#3BB36B]"
                         aria-hidden="true"
                       />
                     </div>
 
-                    <div>
-                      <p className="flex items-center gap-2 text-[10px] font-extrabold uppercase tracking-[0.2em] text-[#3BB36B]">
-                        <span aria-hidden="true" className="h-px w-5 bg-[#3BB36B]" />
-                        IIEV Show · Privacy
+                    <div className="min-w-0">
+                      <p className="text-[10px] font-bold uppercase tracking-[0.15em] text-[#16893F]">
+                        IIEV Show
                       </p>
 
-                      <h2 className="mt-1.5 text-[20px] font-light leading-tight tracking-[-0.03em] text-white sm:text-[23px]">
-                        Your privacy{" "}
-                        <span className="font-bold text-[#3BB36B]">matters.</span>
+                      <h2
+                        id="cookie-consent-title"
+                        className="mt-1 text-lg font-bold leading-tight tracking-[-0.03em] text-[#102A1E]"
+                      >
+                        Your privacy matters
                       </h2>
                     </div>
                   </div>
 
+                  {/* Close only when choice already saved */}
                   {consent !== "none" && (
                     <button
                       type="button"
-                      onClick={close}
+                      onClick={closeSettings}
                       aria-label="Close cookie preferences"
-                      className="relative flex size-8 shrink-0 items-center justify-center rounded-full border border-white/25 bg-[#001433]/60 text-white/80 transition-colors duration-300 hover:border-white/60 hover:bg-white/10 hover:text-white focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
+                      className="flex size-8 shrink-0 items-center justify-center rounded-md text-[#6A776D] transition-colors hover:bg-[#F1F5F2] hover:text-[#102A1E] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#16893F]"
                     >
-                      <X size={16} />
+                      <X
+                        size={18}
+                        strokeWidth={1.7}
+                        aria-hidden="true"
+                      />
                     </button>
                   )}
                 </div>
-
-                <p className="relative mt-4 max-w-[390px] text-[12px] leading-[1.75] text-white/80 sm:text-[13px]">
-                  You are in control of your experience.
-                  Choose whether we can use analytics to
-                  understand how visitors interact with
-                  the IIEV Show website.
-                </p>
               </div>
 
-              {/* Consent options */}
+              {/* ======================================
+                  MAIN CONTENT
+              ====================================== */}
+
               <div className="px-5 pb-5 pt-5 sm:px-6 sm:pb-6">
-                <div className="grid gap-2.5">
-                  <motion.div
-                    {...rise(0)}
-                    className="flex items-start gap-3 rounded-[14px] border border-[#E3EAE5] bg-[#F7FAF7] p-3.5"
-                  >
-                    <div className="mt-0.5 flex size-9 shrink-0 items-center justify-center rounded-full border border-[#1D8043]/35 text-[#1D8043]">
-                      <LockKeyhole
-                        size={16}
-                        strokeWidth={1.8}
-                      />
-                    </div>
+                <p
+                  id="cookie-consent-description"
+                  className="text-[13px] leading-[1.8] text-[#526258]"
+                >
+                  We use essential cookies to keep the
+                  website working. With your permission,
+                  we also use analytics to understand
+                  website usage and improve your experience.
+                </p>
 
-                    <div className="min-w-0 flex-1">
-                      <div className="flex flex-wrap items-center justify-between gap-2">
-                        <h3 className="text-[12px] font-extrabold text-[#1D8043]">
-                          Essential cookies
-                        </h3>
+                {/* Cookie categories */}
+                <div className="mt-5 divide-y divide-[#E8EEE9] border-y border-[#E8EEE9]">
+                  {/* Essential */}
+                  <div className="flex items-start justify-between gap-4 py-3.5">
+                    <div className="min-w-0">
+                      <p className="text-[13px] font-bold text-[#102A1E]">
+                        Essential cookies
+                      </p>
 
-                        <span className="inline-flex items-center gap-1 rounded-full bg-[#1D8043] px-2.5 py-1 text-[9px] font-extrabold uppercase tracking-[0.06em] text-white">
-                          <Check size={10} />
-                          Always active
-                        </span>
-                      </div>
-
-                      <p className="mt-1 text-[11px] leading-[1.6] text-[#5F7266]">
-                        Required for core website
-                        functionality and form security.
+                      <p className="mt-1 text-[11px] leading-5 text-[#718077]">
+                        Required for core website functionality.
                       </p>
                     </div>
-                  </motion.div>
 
-                  <motion.div
-                    {...rise(1)}
-                    className="flex items-start gap-3 rounded-[14px] border border-[#E3EAE5] bg-white p-3.5"
-                  >
-                    <div className="mt-0.5 flex size-9 shrink-0 items-center justify-center rounded-full border border-[#1D8043]/35 text-[#1D8043]">
-                      <Cookie
-                        size={16}
-                        strokeWidth={1.8}
-                      />
-                    </div>
+                    <span className="shrink-0 text-[10px] font-bold text-[#16893F]">
+                      Always active
+                    </span>
+                  </div>
 
-                    <div className="min-w-0 flex-1">
-                      <div className="flex flex-wrap items-center justify-between gap-2">
-                        <h3 className="text-[12px] font-extrabold text-[#1D8043]">
-                          Analytics cookies
-                        </h3>
+                  {/* Analytics */}
+                  <div className="flex items-start justify-between gap-4 py-3.5">
+                    <div className="min-w-0">
+                      <p className="text-[13px] font-bold text-[#102A1E]">
+                        Analytics cookies
+                      </p>
 
-                        <span className="rounded-full border border-[#C7D7CC] px-2.5 py-1 text-[9px] font-bold uppercase tracking-[0.06em] text-[#5F7266]">
-                          Optional
-                        </span>
-                      </div>
-
-                      <p className="mt-1 text-[11px] leading-[1.6] text-[#5F7266]">
-                        Help us improve the exhibition
-                        website by understanding page usage.
+                      <p className="mt-1 text-[11px] leading-5 text-[#718077]">
+                        Help us measure and improve website usage.
                       </p>
                     </div>
-                  </motion.div>
+
+                    <span className="shrink-0 text-[10px] font-medium text-[#718077]">
+                      Optional
+                    </span>
+                  </div>
                 </div>
 
-                {/* Choice buttons: same size, same placement, nothing hidden */}
-                <motion.div {...rise(2)} className="mt-5 grid grid-cols-2 gap-2.5">
+                {/* ==================================
+                    CONSENT ACTIONS
+                ================================== */}
+
+                <div className="mt-5 grid grid-cols-2 gap-3">
                   <button
                     type="button"
-                    onClick={() => choose(false)}
-                    className="inline-flex min-h-[48px] items-center justify-center rounded-full border border-[#C7D7CC] bg-white px-3 text-center text-[11px] font-extrabold text-[#0E2A1C] transition duration-300 hover:border-[#1D8043] hover:bg-[#F3F8F4] active:scale-[0.98] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#1D8043] sm:text-[12px]"
+                    onClick={() => saveChoice(false)}
+                    className="inline-flex min-h-12 items-center justify-center rounded-lg border border-[#C9D8CD] bg-white px-3 py-3 text-center text-[12px] font-bold text-[#102A1E] transition-colors duration-200 hover:border-[#16893F] hover:bg-[#F4F9F5] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#16893F]"
                   >
                     Essential only
                   </button>
 
                   <button
                     type="button"
-                    onClick={() => choose(true)}
-                    className="group inline-flex min-h-[48px] items-center justify-between gap-2 rounded-full bg-[#1D8043] py-1.5 pl-4 pr-1.5 text-[11px] font-extrabold text-white transition duration-300 hover:bg-[#166D38] active:scale-[0.98] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#1D8043] sm:text-[12px]"
+                    onClick={() => saveChoice(true)}
+                    className="inline-flex min-h-12 items-center justify-center rounded-lg bg-[#16893F] px-3 py-3 text-center text-[12px] font-bold text-white transition-colors duration-200 hover:bg-[#116B30] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#16893F]"
                   >
                     Accept analytics
-                    <span className="grid size-8 shrink-0 place-items-center rounded-full bg-white text-[#1D8043] transition-transform duration-300 group-hover:scale-105">
-                      <ArrowUpRight
-                        size={15}
-                        className="transition-transform duration-300 group-hover:translate-x-0.5 group-hover:-translate-y-0.5"
-                      />
-                    </span>
                   </button>
-                </motion.div>
+                </div>
 
-                {/* Footer */}
-                <motion.div
-                  {...rise(3)}
-                  className="mt-4 flex flex-wrap items-center justify-between gap-x-3 gap-y-2 border-t border-[#E6ECE7] pt-3.5"
-                >
-                  <p className="inline-flex items-center gap-1.5 text-[10px] font-medium text-[#6D7E72]">
-                    <LockKeyhole
-                      size={12}
-                      aria-hidden="true"
-                    />
-                    Your choice can be changed anytime
+                {/* ==================================
+                    FOOTER
+                ================================== */}
+
+                <div className="mt-5 flex flex-wrap items-center justify-between gap-x-4 gap-y-2 border-t border-[#E8EEE9] pt-4">
+                  <p className="text-[11px] leading-5 text-[#718077]">
+                    You can change your choice anytime.
                   </p>
 
                   <Link
                     href="/cookie-policy/"
-                    className="inline-flex items-center gap-1 text-[10px] font-extrabold text-[#1D8043] underline decoration-[#1D8043]/35 underline-offset-4 transition-colors duration-300 hover:text-[#125E30] hover:decoration-[#1D8043]"
+                    className="inline-flex items-center gap-1.5 text-[11px] font-bold text-[#16893F] underline decoration-[#16893F]/30 underline-offset-4 transition-colors hover:text-[#116B30] hover:decoration-[#16893F] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#16893F]"
                   >
                     Cookie policy
+
                     <ArrowUpRight
-                      size={12}
+                      size={13}
+                      strokeWidth={1.7}
                       aria-hidden="true"
                     />
                   </Link>
-                </motion.div>
+                </div>
               </div>
-
-              {/* Closing bar draws itself in, all brand green */}
-              <motion.div
-                aria-hidden="true"
-                className="h-[3px] w-full origin-left bg-gradient-to-r from-[#1D8043] to-[#3BB36B]"
-                initial={reducedMotion ? false : { scaleX: 0 }}
-                animate={{ scaleX: 1 }}
-                transition={{ duration: reducedMotion ? 0 : 0.9, delay: reducedMotion ? 0 : 0.45, ease }}
-              />
             </section>
           </motion.div>
-        ) : null}
+        )}
       </AnimatePresence>
     </>
   );
 }
 
+/* =========================================================
+   FOOTER — REOPEN COOKIE SETTINGS
+========================================================= */
+
 export function CookieSettingsButton() {
   return (
     <button
       type="button"
-      className="transition-colors hover:text-white focus-visible:rounded-sm focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#3BB36B]"
-      onClick={() =>
+      onClick={() => {
         window.dispatchEvent(
           new Event("iiev:open-consent")
-        )
-      }
+        );
+      }}
+      className="transition-colors hover:text-white focus-visible:rounded-sm focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#16893F]"
     >
       Cookie settings
     </button>

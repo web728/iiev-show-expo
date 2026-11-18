@@ -293,7 +293,7 @@ export function SiteFooter({
               </Link>
             ))}
 
-            <CookieSettingsButton />
+         
           </div>
         </div>
       </div>

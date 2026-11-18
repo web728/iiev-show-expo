@@ -249,5 +249,4 @@ export const legalNav: NavItem[] = [
   { label: "Terms", href: "/terms/" },
   { label: "Cookie Policy", href: "/cookie-policy/" },
   { label: "Accessibility", href: "/accessibility/" },
-  { label: "Site map", href: "/site-map/" },
 ];
