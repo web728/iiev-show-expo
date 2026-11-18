@@ -1,0 +1,55 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="900" viewBox="0 0 1600 900" fill="none">
+  <defs>
+    <linearGradient id="surface" x1="780" y1="120" x2="1520" y2="830" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#252529"/><stop offset=".55" stop-color="#151518"/><stop offset="1" stop-color="#08080A"/>
+    </linearGradient>
+    <linearGradient id="edge" x1="880" y1="150" x2="1480" y2="710" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#ED3138" stop-opacity=".78"/><stop offset="1" stop-color="#ED3138" stop-opacity=".12"/>
+    </linearGradient>
+    <pattern id="grid" width="64" height="64" patternUnits="userSpaceOnUse">
+      <path d="M64 0H0V64" stroke="#A8A8AF" stroke-opacity=".06"/>
+    </pattern>
+    <filter id="shadow" x="-30%" y="-30%" width="160%" height="160%"><feGaussianBlur stdDeviation="25"/></filter>
+  </defs>
+  <rect width="1600" height="900" fill="#09090B"/>
+  <rect width="1600" height="900" fill="url(#grid)"/>
+  <ellipse cx="1250" cy="490" rx="310" ry="290" fill="#ED3138" fill-opacity=".08" filter="url(#shadow)"/>
+  <!-- Circuit-board routes: orthogonal, practical industrial geometry -->
+  <g stroke="#74747F" stroke-opacity=".28" stroke-width="2">
+    <path d="M730 198H950L999 247H1090"/><path d="M820 274H915L972 331H1050"/>
+    <path d="M745 665H925L999 591H1050"/><path d="M840 732H1042L1104 670H1250"/>
+    <path d="M1490 196H1399L1351 244H1317"/><path d="M1580 314H1468L1410 372H1363"/>
+    <path d="M1510 705H1418L1369 655H1338"/><path d="M1585 597H1519L1459 537H1390"/>
+  </g>
+  <g stroke="#ED3138" stroke-opacity=".6" stroke-width="2.5">
+    <path d="M875 415H988L1046 473H1090"/><path d="M1510 465H1455L1411 421H1368"/>
+  </g>
+  <g fill="#ED3138">
+    <circle cx="875" cy="415" r="4"/><circle cx="1510" cy="465" r="4"/>
+    <circle cx="730" cy="198" r="3" fill-opacity=".55"/><circle cx="840" cy="732" r="3" fill-opacity=".55"/>
+  </g>
+  <!-- Battery enclosure with 6 production cell modules -->
+  <g transform="translate(1010 245)">
+    <rect x="9" y="13" width="396" height="405" rx="19" fill="#000" fill-opacity=".64"/>
+    <rect width="396" height="405" rx="19" fill="url(#surface)" stroke="url(#edge)" stroke-width="3"/>
+    <rect x="30" y="31" width="336" height="343" rx="10" fill="#080809" stroke="#52525A" stroke-opacity=".56"/>
+    <g fill="#19191D" stroke="#77777F" stroke-opacity=".62" stroke-width="1.5">
+      <rect x="49" y="53" width="84" height="141" rx="7"/>
+      <rect x="156" y="53" width="84" height="141" rx="7"/>
+      <rect x="263" y="53" width="84" height="141" rx="7"/>
+      <rect x="49" y="211" width="84" height="141" rx="7"/>
+      <rect x="156" y="211" width="84" height="141" rx="7"/>
+      <rect x="263" y="211" width="84" height="141" rx="7"/>
+    </g>
+    <g stroke="#ED3138" stroke-opacity=".68" stroke-width="3">
+      <path d="M79 66V81M72 73H86"/><path d="M186 66V81M179 73H193"/><path d="M293 66V81M286 73H300"/>
+      <path d="M79 224V239M72 231H86"/><path d="M186 224V239M179 231H193"/><path d="M293 224V239M286 231H300"/>
+    </g>
+    <g stroke="#4E4E55" stroke-width="2" stroke-linecap="round">
+      <path d="M68 175H114M175 175H221M282 175H328"/><path d="M68 333H114M175 333H221M282 333H328"/>
+    </g>
+    <rect x="169" y="-16" width="58" height="16" rx="4" fill="#ED3138"/>
+    <g fill="#AAAAB0" fill-opacity=".5"><circle cx="20" cy="20" r="3"/><circle cx="376" cy="20" r="3"/><circle cx="20" cy="385" r="3"/><circle cx="376" cy="385" r="3"/></g>
+  </g>
+  <text x="1110" y="721" fill="#C4C4C8" fill-opacity=".32" font-family="Arial,sans-serif" font-size="12" letter-spacing="5">CELL MODULE / 06</text>
+</svg>
