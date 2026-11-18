@@ -1,4 +1,3 @@
-
 import type { Metadata } from "next";
 import Image from "next/image";
 import Link from "next/link";
@@ -7,6 +6,8 @@ import {
   ArrowRight,
   ArrowUpRight,
   BatteryCharging,
+  CalendarDays,
+  Car,
   CarFront,
   Check,
   ChevronDown,
@@ -18,9 +19,6 @@ import {
   Plane,
   PlugZap,
   TrainFront,
-  Truck,
-  UsersRound,
-  Car,
 } from "lucide-react";
 
 import { PageHero } from "@/components/ui/page-hero";
@@ -36,6 +34,8 @@ export const metadata: Metadata = pageMetadata({
     "Discover electric vehicles, automotive components, manufacturing technologies and energy management solutions at IIEV Show 2027. Find travel information and visitor FAQs.",
   path: "/visit/why-visit/",
 });
+
+const REGISTER_HREF = "/visit/register/";
 
 const focusAreas: {
   title: string;
@@ -74,7 +74,11 @@ const focusAreas: {
   },
 ];
 
-const travel = [
+const travel: {
+  title: string;
+  Icon: LucideIcon;
+  text: string;
+}[] = [
   {
     title: "By Air",
     Icon: Plane,
@@ -105,6 +109,44 @@ const visitTips = [
   "Allow time for demonstrations and direct discussions.",
 ];
 
+/* ---------- Shared pieces ---------- */
+
+function MotionStyles() {
+  return (
+    <style>{`
+      @keyframes iiev-spin { to { transform: rotate(360deg); } }
+      @keyframes iiev-spin-rev { to { transform: rotate(-360deg); } }
+      @keyframes iiev-shimmer {
+        0% { transform: translateX(-130%) skewX(-20deg); }
+        100% { transform: translateX(260%) skewX(-20deg); }
+      }
+      @keyframes iiev-ring {
+        0% { box-shadow: 0 0 0 0 rgba(35,164,85,.45); }
+        70% { box-shadow: 0 0 0 16px rgba(35,164,85,0); }
+        100% { box-shadow: 0 0 0 0 rgba(35,164,85,0); }
+      }
+      @keyframes iiev-dot {
+        0%, 100% { transform: scale(1); opacity: 1; }
+        50% { transform: scale(1.5); opacity: .55; }
+      }
+      @keyframes iiev-glow {
+        0%, 100% { opacity: .35; transform: scale(1); }
+        50% { opacity: .65; transform: scale(1.08); }
+      }
+      .iiev-spin { animation: iiev-spin 70s linear infinite; }
+      .iiev-spin-rev { animation: iiev-spin-rev 90s linear infinite; }
+      .iiev-shimmer { animation: iiev-shimmer 3.4s ease-in-out infinite; }
+      .iiev-ring { animation: iiev-ring 2.4s ease-out infinite; }
+      .iiev-dot { animation: iiev-dot 2.2s ease-in-out infinite; }
+      .iiev-glow { animation: iiev-glow 7s ease-in-out infinite; }
+      @media (prefers-reduced-motion: reduce) {
+        .iiev-spin, .iiev-spin-rev, .iiev-shimmer,
+        .iiev-ring, .iiev-dot, .iiev-glow { animation: none !important; }
+      }
+    `}</style>
+  );
+}
+
 function Eyebrow({
   children,
   light = false,
@@ -114,7 +156,10 @@ function Eyebrow({
 }) {
   return (
     <div className="flex items-center gap-3">
-      <span className="h-[2px] w-7 bg-[#23A455]" />
+      <span
+        aria-hidden="true"
+        className="h-[2px] w-7 shrink-0 bg-[#23A455]"
+      />
       <span
         className={`text-[10px] font-extrabold uppercase tracking-[0.18em] sm:text-[11px] ${
           light ? "text-white/65" : "text-[#16893F]"
@@ -125,6 +170,44 @@ function Eyebrow({
     </div>
   );
 }
+
+/** Primary CTA with shimmer sweep + pulsing ring */
+function RegisterButton({ large = false }: { large?: boolean }) {
+  return (
+    <Link
+      href={REGISTER_HREF}
+      className={`
+        iiev-ring group relative inline-flex items-center justify-center
+        gap-2 overflow-hidden rounded-full bg-[#23A455]
+        font-extrabold text-white
+        transition-all duration-300
+        hover:-translate-y-0.5 hover:bg-[#16893F]
+        hover:shadow-[0_18px_40px_-16px_rgba(35,164,85,.7)]
+        focus-visible:outline-2 focus-visible:outline-offset-4
+        focus-visible:outline-[#23A455]
+        ${
+          large
+            ? "min-h-14 px-9 text-[14px]"
+            : "min-h-12 px-8 text-[13px]"
+        }
+      `}
+    >
+      <span
+        aria-hidden="true"
+        className="iiev-shimmer pointer-events-none absolute inset-y-0 left-0 w-1/3 bg-gradient-to-r from-transparent via-white/30 to-transparent"
+      />
+      <span className="relative">Register as Visitor</span>
+      <ArrowUpRight
+        size={18}
+        strokeWidth={2}
+        aria-hidden="true"
+        className="relative transition-transform duration-300 group-hover:-translate-y-0.5 group-hover:translate-x-0.5"
+      />
+    </Link>
+  );
+}
+
+/* ---------- Page ---------- */
 
 export default async function WhyVisitPage() {
   const edition = await getCurrentEdition();
@@ -144,7 +227,10 @@ export default async function WhyVisitPage() {
       answer: (
         <>
           Complete the{" "}
-          <Link href="/visit/register/" className="font-bold text-[#16893F] underline underline-offset-4">
+          <Link
+            href="/visit/register/"
+            className="font-bold text-[#16893F] underline underline-offset-4"
+          >
             visitor registration form
           </Link>
           . Follow the instructions provided after submission.
@@ -157,18 +243,7 @@ export default async function WhyVisitPage() {
         edition.registration.admissionNote ??
         "Admission details will be communicated through official event information and registration confirmation.",
     },
-    {
-      question: "I lost my badge email. How can I get it again?",
-      answer: (
-        <>
-          Use the{" "}
-          <Link href="/visit/badge/" className="font-bold text-[#16893F] underline underline-offset-4">
-            badge retrieval page
-          </Link>{" "}
-          with the email address used during registration.
-        </>
-      ),
-    },
+    
     {
       question: "Can someone else use my badge?",
       answer:
@@ -176,8 +251,7 @@ export default async function WhyVisitPage() {
     },
     {
       question: "How do I reach the venue?",
-      answer:
-        `The exhibition venue is ${venue}. Air, rail, road and accommodation guidance is provided in the Travel & Stay section below.`,
+      answer: `The exhibition venue is ${venue}. Air, rail, road and accommodation guidance is provided in the Travel & Stay section below.`,
     },
     {
       question: "What are the opening hours?",
@@ -188,6 +262,8 @@ export default async function WhyVisitPage() {
 
   return (
     <>
+      <MotionStyles />
+
       <PageHero
         eyebrow="Visit IIEV Show"
         title="Why Visit"
@@ -201,8 +277,51 @@ export default async function WhyVisitPage() {
         ]}
       />
 
-      {/* CORE EXHIBITION POSITIONING */}
-      <section className="bg-white py-16 sm:py-24">
+      {/* =====================================
+          CORE POSITIONING + REGISTER BUTTON
+      ===================================== */}
+      <section className="relative isolate overflow-hidden bg-white py-18 sm:py-24 lg:py-28">
+        {/* soft glow */}
+        <div
+          aria-hidden="true"
+          className="iiev-glow pointer-events-none absolute left-1/2 top-0 -z-10 h-[420px] w-[720px] -translate-x-1/2 rounded-full bg-[radial-gradient(closest-side,rgba(35,164,85,.14),transparent)]"
+        />
+
+        {/* rotating rings */}
+        <svg
+          viewBox="0 0 400 400"
+          fill="none"
+          aria-hidden="true"
+          className="iiev-spin pointer-events-none absolute -left-32 top-10 -z-10 size-[400px] text-[#23A455] opacity-[0.08]"
+        >
+          <circle cx="200" cy="200" r="175" stroke="currentColor" />
+          <circle
+            cx="200"
+            cy="200"
+            r="120"
+            stroke="currentColor"
+            strokeDasharray="5 11"
+          />
+          <circle cx="200" cy="25" r="5" fill="currentColor" />
+        </svg>
+
+        <svg
+          viewBox="0 0 400 400"
+          fill="none"
+          aria-hidden="true"
+          className="iiev-spin-rev pointer-events-none absolute -right-32 bottom-0 -z-10 size-[400px] text-[#23A455] opacity-[0.08]"
+        >
+          <circle cx="200" cy="200" r="175" stroke="currentColor" />
+          <circle
+            cx="200"
+            cy="200"
+            r="115"
+            stroke="currentColor"
+            strokeDasharray="5 11"
+          />
+          <circle cx="375" cy="200" r="5" fill="currentColor" />
+        </svg>
+
         <div className="mx-auto max-w-7xl px-5 sm:px-8 lg:px-10">
           <AboutReveal className="mx-auto max-w-4xl text-center">
             <div className="flex justify-center">
@@ -217,7 +336,7 @@ export default async function WhyVisitPage() {
             </h2>
 
             <p className="mx-auto mt-7 max-w-3xl text-[14px] leading-8 text-[#526357] sm:text-base">
-              India International EV Show brings together
+             9th India International EV Show brings together
               technologies and solutions relevant to
               automotive manufacturing and electric mobility.
               The exhibition covers emerging manufacturing
@@ -236,13 +355,25 @@ export default async function WhyVisitPage() {
               business relationships.
             </p>
           </AboutReveal>
+
+          {/* Centered CTA */}
+          <AboutReveal
+            delay={0.12}
+            className="mt-10 flex flex-col items-center gap-6"
+          >
+            <RegisterButton large />
+
+           
+          </AboutReveal>
         </div>
       </section>
 
-      {/* TECHNOLOGY FOCUS */}
-      <section className="bg-[#F5F9F5] py-16 sm:py-24">
+      {/* =====================================
+          TECHNOLOGY FOCUS
+      ===================================== */}
+      <section className="relative overflow-hidden bg-[#F5F9F5] py-18 sm:py-24">
         <div className="mx-auto max-w-7xl px-5 sm:px-8 lg:px-10">
-          <AboutReveal className="mb-11 max-w-3xl">
+          <AboutReveal className="mb-12 max-w-3xl">
             <Eyebrow>At the Exhibition</Eyebrow>
 
             <h2 className="mt-5 text-[clamp(2rem,4.2vw,3.6rem)] font-extrabold leading-[1.12] tracking-[-0.05em] text-[#102A1E]">
@@ -262,30 +393,59 @@ export default async function WhyVisitPage() {
             {focusAreas.map(({ title, text, Icon }, index) => (
               <AboutReveal
                 key={title}
-                delay={(index % 3) * 0.06}
+                delay={(index % 3) * 0.07}
                 className="h-full"
               >
-                <article className="group relative flex h-full min-h-[235px] flex-col overflow-hidden rounded-[22px] border border-[#DFE8E1] bg-white p-7 transition-[border-color,transform,box-shadow] duration-300 hover:-translate-y-1 hover:border-[#23A455]/50 hover:shadow-[0_20px_42px_-32px_rgba(9,27,19,0.32)]">
+                <article
+                  className="
+                    group relative flex h-full min-h-[250px] flex-col
+                    overflow-hidden rounded-[24px]
+                    border border-[#DFE8E1] bg-white p-7
+                    transition-all duration-500
+                    hover:-translate-y-1.5
+                    hover:border-[#23A455]/50
+                    hover:shadow-[0_30px_60px_-38px_rgba(9,27,19,.45)]
+                  "
+                >
+                  {/* top accent bar */}
+                  <span
+                    aria-hidden="true"
+                    className="absolute inset-x-0 top-0 h-[3px] origin-left scale-x-0 bg-gradient-to-r from-[#23A455] to-[#7BD69A] transition-transform duration-500 group-hover:scale-x-100"
+                  />
+
+                  {/* hover glow */}
+                  <span
+                    aria-hidden="true"
+                    className="pointer-events-none absolute -bottom-24 -right-24 size-64 rounded-full bg-[radial-gradient(closest-side,rgba(35,164,85,.16),transparent)] opacity-0 transition-opacity duration-500 group-hover:opacity-100"
+                  />
+
                   <svg
                     viewBox="0 0 150 150"
                     fill="none"
                     aria-hidden="true"
-                    className="pointer-events-none absolute -right-8 -top-10 size-36 text-[#23A455] opacity-[0.07]"
+                    className="iiev-spin pointer-events-none absolute -right-8 -top-10 size-36 text-[#23A455] opacity-[0.08]"
                   >
                     <circle cx="75" cy="75" r="61" stroke="currentColor" />
-                    <circle cx="75" cy="75" r="39" stroke="currentColor" />
-                    <circle cx="75" cy="75" r="17" stroke="currentColor" />
+                    <circle
+                      cx="75"
+                      cy="75"
+                      r="39"
+                      stroke="currentColor"
+                      strokeDasharray="4 8"
+                    />
+                    <circle cx="75" cy="14" r="3.5" fill="currentColor" />
                   </svg>
 
-                  <span className="relative flex size-12 items-center justify-center rounded-xl bg-[#E8F5EC] text-[#16893F] transition-colors group-hover:bg-[#23A455] group-hover:text-white">
+                  {/* icon: pops out on hover, no tilt */}
+                  <span className="relative flex size-14 items-center justify-center rounded-2xl bg-[#E8F5EC] text-[#16893F] transition-all duration-500 group-hover:-translate-y-1 group-hover:scale-110 group-hover:bg-[#23A455] group-hover:text-white group-hover:shadow-[0_14px_28px_-12px_rgba(35,164,85,.65)]">
                     <Icon
-                      size={24}
-                      strokeWidth={1.7}
+                      size={26}
+                      strokeWidth={1.75}
                       aria-hidden="true"
                     />
                   </span>
 
-                  <h3 className="relative mt-8 text-lg font-extrabold text-[#102A1E]">
+                  <h3 className="relative mt-8 text-lg font-extrabold tracking-[-0.02em] text-[#102A1E]">
                     {title}
                   </h3>
 
@@ -299,13 +459,15 @@ export default async function WhyVisitPage() {
         </div>
       </section>
 
-      {/* WHY ATTEND */}
-      <section className="relative isolate overflow-hidden bg-[#102A1E] py-16 text-white sm:py-24">
+      {/* =====================================
+          WHY ATTEND (DARK)
+      ===================================== */}
+      <section className="relative isolate overflow-hidden bg-[#102A1E] py-18 text-white sm:py-24">
         <svg
           viewBox="0 0 520 520"
           fill="none"
           aria-hidden="true"
-          className="pointer-events-none absolute -right-40 -top-40 size-[520px] opacity-25"
+          className="iiev-spin pointer-events-none absolute -right-40 -top-40 -z-10 size-[520px] opacity-25"
         >
           <circle cx="260" cy="260" r="215" stroke="#23A455" />
           <circle cx="260" cy="260" r="150" stroke="#23A455" />
@@ -316,9 +478,15 @@ export default async function WhyVisitPage() {
             stroke="#23A455"
             strokeDasharray="6 13"
           />
+          <circle cx="260" cy="45" r="5" fill="#23A455" />
         </svg>
 
-        <div className="relative mx-auto grid max-w-7xl items-center gap-10 px-5 sm:px-8 lg:grid-cols-[1fr_1fr] lg:gap-16 lg:px-10">
+        <div
+          aria-hidden="true"
+          className="iiev-glow pointer-events-none absolute -left-40 bottom-0 -z-10 size-[460px] rounded-full bg-[radial-gradient(closest-side,rgba(35,164,85,.22),transparent)]"
+        />
+
+        <div className="relative mx-auto grid max-w-7xl items-center gap-12 px-5 sm:px-8 lg:grid-cols-2 lg:gap-16 lg:px-10">
           <AboutReveal>
             <Eyebrow light>Industry Connections</Eyebrow>
 
@@ -348,7 +516,7 @@ export default async function WhyVisitPage() {
               ].map((item) => (
                 <span
                   key={item}
-                  className="rounded-full border border-white/15 bg-white/[0.05] px-3.5 py-2 text-[11px] font-semibold text-white/75"
+                  className="rounded-full border border-white/15 bg-white/[0.05] px-3.5 py-2 text-[11px] font-semibold text-white/75 transition-colors duration-300 hover:border-[#23A455]/60 hover:bg-white/[0.1] hover:text-white"
                 >
                   {item}
                 </span>
@@ -363,36 +531,45 @@ export default async function WhyVisitPage() {
               <ArrowUpRight
                 size={17}
                 aria-hidden="true"
-                className="transition-transform group-hover:translate-x-1 group-hover:-translate-y-1"
+                className="transition-transform group-hover:-translate-y-1 group-hover:translate-x-1"
               />
             </Link>
           </AboutReveal>
 
           <AboutReveal delay={0.1}>
-            <div className="relative aspect-[5/4] overflow-hidden rounded-[24px] bg-[#091B13]">
-              <Image
-                src="/media/2026/expo-aisle-visitors.webp"
-                alt="Visitors exploring exhibits at the India International EV Show"
-                fill
-                sizes="(max-width:1024px) 100vw, 50vw"
-                className="object-cover transition-transform duration-700 hover:scale-[1.04]"
+            <div className="relative">
+              <div className="relative aspect-[5/4] overflow-hidden rounded-[24px] bg-[#091B13] shadow-[0_40px_80px_-40px_rgba(0,0,0,.7)]">
+                <Image
+                  src="/media/2026/expo-aisle-visitors.webp"
+                  alt="Visitors exploring exhibits at the India International EV Show"
+                  fill
+                  sizes="(max-width:1024px) 100vw, 50vw"
+                  className="object-cover transition-transform duration-700 hover:scale-[1.04]"
+                />
+
+                <div className="absolute inset-0 bg-gradient-to-t from-[#091B13]/55 via-transparent to-transparent" />
+
+                <span className="absolute bottom-5 left-5 rounded-full border border-white/20 bg-[#091B13]/70 px-4 py-2 text-[11px] font-semibold backdrop-blur-sm">
+                  Previous exhibition
+                </span>
+              </div>
+
+              <div
+                aria-hidden="true"
+                className="absolute -bottom-4 -right-4 -z-10 size-36 rounded-3xl border-2 border-[#23A455]/35"
               />
-
-              <div className="absolute inset-0 bg-gradient-to-t from-[#091B13]/50 via-transparent to-transparent" />
-
-              <span className="absolute bottom-5 left-5 rounded-full border border-white/20 bg-[#091B13]/70 px-4 py-2 text-[11px] font-semibold backdrop-blur-sm">
-                Previous exhibition
-              </span>
             </div>
           </AboutReveal>
         </div>
       </section>
 
-      {/* VISIT PLANNING TIPS */}
-      <section className="bg-white py-16 sm:py-20">
+      {/* =====================================
+          VISIT PLANNING TIPS
+      ===================================== */}
+      <section className="bg-white py-18 sm:py-24">
         <div className="mx-auto max-w-7xl px-5 sm:px-8 lg:px-10">
-          <AboutReveal className="grid items-start gap-10 lg:grid-cols-[.8fr_1.2fr] lg:gap-16">
-            <div>
+          <div className="grid items-start gap-10 lg:grid-cols-[.8fr_1.2fr] lg:gap-16">
+            <AboutReveal>
               <Eyebrow>Plan Your Visit</Eyebrow>
 
               <h2 className="mt-5 text-[clamp(2rem,4vw,3.3rem)] font-extrabold leading-[1.12] tracking-[-0.05em] text-[#102A1E]">
@@ -407,48 +584,42 @@ export default async function WhyVisitPage() {
                 relevant products, exhibitors and
                 discussions during your visit.
               </p>
-            </div>
+            </AboutReveal>
 
-            <div className="rounded-[22px] border border-[#DFE8E1] bg-[#F7FAF7] p-6 sm:p-8">
-              <ul className="space-y-5">
-                {visitTips.map((tip) => (
-                  <li
-                    key={tip}
-                    className="flex items-start gap-3 text-[13px] leading-7 text-[#405548]"
-                  >
-                    <span className="mt-1 flex size-6 shrink-0 items-center justify-center rounded-full bg-[#E2F2E7] text-[#16893F]">
-                      <Check
-                        size={14}
-                        strokeWidth={2.2}
-                        aria-hidden="true"
-                      />
-                    </span>
+            <AboutReveal delay={0.1}>
+              <div className="rounded-[24px] border border-[#DFE8E1] bg-[#F7FAF7] p-6 sm:p-8">
+                <ul className="space-y-3">
+                  {visitTips.map((tip) => (
+                    <li
+                      key={tip}
+                      className="group flex items-start gap-3 rounded-xl px-3 py-3 text-[13px] leading-7 text-[#405548] transition-colors duration-300 hover:bg-white"
+                    >
+                      <span className="mt-0.5 flex size-7 shrink-0 items-center justify-center rounded-full bg-[#E2F2E7] text-[#16893F] transition-all duration-300 group-hover:scale-110 group-hover:bg-[#23A455] group-hover:text-white">
+                        <Check
+                          size={15}
+                          strokeWidth={2.3}
+                          aria-hidden="true"
+                        />
+                      </span>
 
-                    {tip}
-                  </li>
-                ))}
-              </ul>
+                      {tip}
+                    </li>
+                  ))}
+                </ul>
 
-              <Link
-                href="/exhibitors/"
-                className="group mt-8 inline-flex items-center gap-2 text-[13px] font-bold text-[#16893F] hover:text-[#102A1E]"
-              >
-                View Exhibitor Directory
-                <ArrowUpRight
-                  size={16}
-                  aria-hidden="true"
-                  className="transition-transform group-hover:translate-x-1 group-hover:-translate-y-1"
-                />
-              </Link>
-            </div>
-          </AboutReveal>
+               
+              </div>
+            </AboutReveal>
+          </div>
         </div>
       </section>
 
-      {/* TRAVEL & STAY */}
+      {/* =====================================
+          TRAVEL & STAY
+      ===================================== */}
       <section
         id="travel-stay"
-        className="scroll-mt-28 bg-[#F5F9F5] py-16 sm:py-24"
+        className="relative scroll-mt-28 overflow-hidden bg-[#F5F9F5] py-18 sm:py-24"
       >
         <div className="mx-auto max-w-7xl px-5 sm:px-8 lg:px-10">
           <AboutReveal className="max-w-3xl">
@@ -469,23 +640,38 @@ export default async function WhyVisitPage() {
             </p>
           </AboutReveal>
 
-          <div className="mt-10 grid gap-4 md:grid-cols-2">
+          <div className="mt-11 grid gap-4 md:grid-cols-2">
             {travel.map(({ title, text, Icon }, index) => (
               <AboutReveal
                 key={title}
-                delay={(index % 2) * 0.07}
+                delay={(index % 2) * 0.08}
                 className="h-full"
               >
-                <article className="group h-full rounded-[22px] border border-[#DFE8E1] bg-white p-7 transition-all duration-300 hover:-translate-y-0.5 hover:border-[#23A455]/45 sm:p-8">
-                  <span className="flex size-12 items-center justify-center rounded-xl bg-[#E8F5EC] text-[#16893F]">
+                <article
+                  className="
+                    group relative h-full overflow-hidden rounded-[24px]
+                    border border-[#DFE8E1] bg-white p-7
+                    transition-all duration-500
+                    hover:-translate-y-1
+                    hover:border-[#23A455]/50
+                    hover:shadow-[0_28px_58px_-40px_rgba(9,27,19,.45)]
+                    sm:p-8
+                  "
+                >
+                  <span
+                    aria-hidden="true"
+                    className="absolute inset-y-0 left-0 w-[3px] origin-top scale-y-0 bg-gradient-to-b from-[#23A455] to-[#7BD69A] transition-transform duration-500 group-hover:scale-y-100"
+                  />
+
+                  <span className="flex size-14 items-center justify-center rounded-2xl bg-[#E8F5EC] text-[#16893F] transition-all duration-500 group-hover:-translate-y-1 group-hover:scale-110 group-hover:bg-[#23A455] group-hover:text-white group-hover:shadow-[0_14px_28px_-12px_rgba(35,164,85,.65)]">
                     <Icon
-                      size={24}
+                      size={26}
                       strokeWidth={1.8}
                       aria-hidden="true"
                     />
                   </span>
 
-                  <h3 className="mt-7 text-xl font-extrabold text-[#102A1E]">
+                  <h3 className="mt-7 text-xl font-extrabold tracking-[-0.03em] text-[#102A1E]">
                     {title}
                   </h3>
 
@@ -497,14 +683,16 @@ export default async function WhyVisitPage() {
             ))}
           </div>
 
-          <AboutReveal className="mt-7">
-            <div className="rounded-2xl border border-[#DFE8E1] bg-white p-6 sm:p-8">
+          <AboutReveal className="mt-6">
+            <div className="rounded-[22px] border border-[#DFE8E1] bg-white p-6 sm:p-8">
               <div className="flex items-start gap-4">
-                <MapPin
-                  size={22}
-                  className="mt-0.5 shrink-0 text-[#16893F]"
-                  aria-hidden="true"
-                />
+                <span className="flex size-11 shrink-0 items-center justify-center rounded-xl bg-[#E8F5EC] text-[#16893F]">
+                  <MapPin
+                    size={21}
+                    strokeWidth={1.8}
+                    aria-hidden="true"
+                  />
+                </span>
 
                 <div>
                   <h3 className="text-sm font-extrabold text-[#102A1E]">
@@ -523,26 +711,24 @@ export default async function WhyVisitPage() {
                     <ArrowUpRight
                       size={16}
                       aria-hidden="true"
+                      className="transition-transform group-hover:-translate-y-0.5 group-hover:translate-x-0.5"
                     />
                   </Link>
                 </div>
               </div>
 
-              <p className="mt-5 border-t border-[#E8EEE9] pt-5 text-[12px] leading-6 text-[#718074]">
-                Official hotel partners or shuttle services
-                for 2027 have not been announced. Any
-                confirmed arrangements will be shared
-                through official event information.
-              </p>
+            
             </div>
           </AboutReveal>
         </div>
       </section>
 
-      {/* VISITOR FAQS */}
+      {/* =====================================
+          VISITOR FAQS
+      ===================================== */}
       <section
         id="visitor-faqs"
-        className="scroll-mt-28 bg-white py-16 sm:py-24"
+        className="scroll-mt-28 bg-white py-18 sm:py-24"
       >
         <div className="mx-auto max-w-4xl px-5 sm:px-8">
           <AboutReveal className="text-center">
@@ -563,19 +749,19 @@ export default async function WhyVisitPage() {
             </p>
           </AboutReveal>
 
-          <div className="mt-10 space-y-3">
+          <div className="mt-11 space-y-3">
             {faqs.map((faq, index) => (
               <AboutReveal
                 key={faq.question}
-                delay={(index % 3) * 0.04}
+                delay={(index % 3) * 0.05}
               >
-                <details className="group overflow-hidden rounded-2xl border border-[#DFE8E1] bg-[#FAFCFA] open:border-[#23A455]/40">
+                <details className="group overflow-hidden rounded-2xl border border-[#DFE8E1] bg-[#FAFCFA] transition-all duration-300 hover:border-[#23A455]/35 open:border-[#23A455]/45 open:bg-white open:shadow-[0_22px_50px_-38px_rgba(9,27,19,.4)]">
                   <summary className="flex min-h-17 cursor-pointer list-none items-center justify-between gap-4 px-5 py-5 text-left [&::-webkit-details-marker]:hidden sm:px-7">
                     <span className="text-[13px] font-extrabold leading-6 text-[#102A1E] sm:text-[15px]">
                       {faq.question}
                     </span>
 
-                    <span className="flex size-8 shrink-0 items-center justify-center rounded-full bg-[#E5F4E9] text-[#16893F]">
+                    <span className="flex size-9 shrink-0 items-center justify-center rounded-full bg-[#E5F4E9] text-[#16893F] transition-all duration-300 group-open:bg-[#23A455] group-open:text-white">
                       <ChevronDown
                         size={17}
                         aria-hidden="true"
@@ -593,70 +779,135 @@ export default async function WhyVisitPage() {
           </div>
 
           <AboutReveal className="mt-8">
-            <div className="flex flex-col gap-5 rounded-2xl bg-[#102A1E] p-6 text-white sm:flex-row sm:items-center sm:justify-between sm:p-8">
-              <div>
-                <h3 className="text-base font-extrabold">
-                  Still have a question?
-                </h3>
-                <p className="mt-2 text-xs leading-6 text-white/65">
-                  Contact the organiser for additional
-                  visiting information.
-                </p>
-              </div>
-
-              <Link
-                href="/contact/"
-                className="inline-flex min-h-11 shrink-0 items-center justify-center gap-2 rounded-full border border-white/25 px-5 text-xs font-bold text-white transition-colors hover:border-[#23A455] hover:bg-[#23A455]"
+            <div className="relative overflow-hidden rounded-[22px] bg-[#102A1E] p-6 text-white sm:p-8">
+              <svg
+                viewBox="0 0 200 200"
+                fill="none"
+                aria-hidden="true"
+                className="iiev-spin pointer-events-none absolute -right-12 -top-16 size-48 opacity-25"
               >
-                Contact Us
-                <ArrowUpRight
-                  size={16}
-                  aria-hidden="true"
+                <circle cx="100" cy="100" r="83" stroke="#23A455" />
+                <circle
+                  cx="100"
+                  cy="100"
+                  r="55"
+                  stroke="#23A455"
+                  strokeDasharray="4 9"
                 />
-              </Link>
+              </svg>
+
+              <div className="relative flex flex-col gap-5 sm:flex-row sm:items-center sm:justify-between">
+                <div>
+                  <h3 className="text-base font-extrabold">
+                    Still have a question?
+                  </h3>
+                  <p className="mt-2 text-xs leading-6 text-white/65">
+                    Contact the organiser for additional
+                    visiting information.
+                  </p>
+                </div>
+
+                <Link
+                  href="/contact/"
+                  className="group inline-flex min-h-11 shrink-0 items-center justify-center gap-2 rounded-full border border-white/25 px-5 text-xs font-bold text-white transition-all duration-300 hover:border-[#23A455] hover:bg-[#23A455]"
+                >
+                  Contact Us
+                  <ArrowUpRight
+                    size={16}
+                    aria-hidden="true"
+                    className="transition-transform duration-300 group-hover:-translate-y-0.5 group-hover:translate-x-0.5"
+                  />
+                </Link>
+              </div>
             </div>
           </AboutReveal>
         </div>
       </section>
 
-      {/* CTA */}
-      <section className="bg-[#091B13] py-16 text-white sm:py-20">
-        <AboutReveal className="mx-auto max-w-4xl px-5 text-center sm:px-8">
-          <p className="text-[11px] font-extrabold uppercase tracking-[0.18em] text-[#23A455]">
-            IIEV 2027
-          </p>
+      {/* =====================================
+          FINAL CTA
+      ===================================== */}
+      <section className="relative isolate overflow-hidden bg-[#091B13] py-20 text-white sm:py-28">
+        <Image
+          src="/media/2026/expo-car-interest.webp"
+          alt=""
+          fill
+          sizes="100vw"
+          aria-hidden="true"
+          className="-z-20 object-cover opacity-[0.14]"
+        />
+        <div
+          aria-hidden="true"
+          className="absolute inset-0 -z-10 bg-gradient-to-b from-[#091B13] via-[#091B13]/80 to-[#091B13]"
+        />
 
-          <h2 className="mt-5 text-[clamp(2rem,4.5vw,3.8rem)] font-extrabold leading-[1.12] tracking-[-0.05em]">
+        <div
+          aria-hidden="true"
+          className="iiev-glow pointer-events-none absolute left-1/2 top-1/2 -z-10 h-[420px] w-[720px] -translate-x-1/2 -translate-y-1/2 rounded-full bg-[radial-gradient(closest-side,rgba(35,164,85,.3),transparent)]"
+        />
+
+        <svg
+          viewBox="0 0 500 500"
+          fill="none"
+          aria-hidden="true"
+          className="iiev-spin pointer-events-none absolute -right-36 -top-48 -z-10 size-[500px] opacity-30"
+        >
+          <circle cx="250" cy="250" r="210" stroke="#23A455" />
+          <circle cx="250" cy="250" r="145" stroke="#23A455" />
+          <circle
+            cx="250"
+            cy="250"
+            r="80"
+            stroke="#23A455"
+            strokeDasharray="6 12"
+          />
+          <circle cx="250" cy="40" r="5" fill="#23A455" />
+        </svg>
+
+        <svg
+          viewBox="0 0 500 500"
+          fill="none"
+          aria-hidden="true"
+          className="iiev-spin-rev pointer-events-none absolute -bottom-52 -left-40 -z-10 size-[500px] opacity-20"
+        >
+          <circle cx="250" cy="250" r="210" stroke="#23A455" />
+          <circle
+            cx="250"
+            cy="250"
+            r="145"
+            stroke="#23A455"
+            strokeDasharray="6 12"
+          />
+        </svg>
+
+        <AboutReveal className="relative mx-auto max-w-4xl px-5 text-center sm:px-8">
+          <div className="flex justify-center">
+            <Eyebrow light>IIEV 2027</Eyebrow>
+          </div>
+
+          <h2 className="mt-6 text-[clamp(2.1rem,4.7vw,4.2rem)] font-extrabold leading-[1.12] tracking-[-0.055em]">
             Explore electric mobility
             <span className="text-[#23A455]">
               {" "}in Pune.
             </span>
           </h2>
 
-          <p className="mx-auto mt-5 max-w-xl text-sm leading-8 text-white/70">
+          <p className="mx-auto mt-6 max-w-xl text-sm leading-8 text-white/70 sm:text-base">
             {edition.dateLabel} · {edition.venue.city}
           </p>
 
-          <div className="mt-8 flex flex-wrap justify-center gap-3">
-            <Link
-              href="/visit/register/"
-              className="group inline-flex min-h-12 items-center gap-2 rounded-full bg-[#23A455] px-7 text-[13px] font-bold text-white transition-all duration-300 hover:-translate-y-0.5 hover:bg-[#16893F]"
-            >
-              Register as Visitor
-              <ArrowUpRight
-                size={17}
-                aria-hidden="true"
-              />
-            </Link>
+          <div className="mt-10 flex flex-wrap items-center justify-center gap-3">
+            <RegisterButton large />
 
             <Link
               href="/visit/visitor-profile/"
-              className="inline-flex min-h-12 items-center gap-2 rounded-full border border-white/30 px-7 text-[13px] font-bold text-white transition-colors hover:bg-white/10"
+              className="group inline-flex min-h-14 items-center justify-center gap-2 rounded-full border border-white/30 px-8 text-[14px] font-bold text-white transition-all duration-300 hover:border-[#23A455] hover:bg-white/10"
             >
               Visitor Profile
               <ArrowRight
                 size={17}
                 aria-hidden="true"
+                className="transition-transform duration-300 group-hover:translate-x-1"
               />
             </Link>
           </div>

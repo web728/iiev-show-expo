@@ -52,7 +52,7 @@ export default function DownloadsPage() {
                 <div>
                   <p className="text-[11px] font-bold uppercase tracking-[0.17em] text-[#16893F]">Official Document</p>
                   <h2 id="psr-title" className="mt-2 text-xl font-extrabold tracking-tight text-[#102A1E] sm:text-2xl">Post Show Report</h2>
-                  <p className="mt-2 text-sm leading-7 text-[#617166]">Download the published report directly. No form required.</p>
+                  <p className="mt-2 text-sm leading-7 text-[#617166]">Download the published report directly.</p>
                 </div>
               </div>
               <Link href={REPORT} target="_self" className="inline-flex min-h-12 shrink-0 items-center justify-center gap-2 rounded-xl bg-[#23A455] px-6 text-sm font-bold text-white transition-colors hover:bg-[#16893F]">

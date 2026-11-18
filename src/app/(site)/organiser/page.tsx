@@ -123,7 +123,7 @@ export default function OrganiserPage() {
         <div className="relative mx-auto max-w-7xl px-5 sm:px-8 lg:px-10">
           <AboutReveal className="mx-auto max-w-3xl text-center">
             <p className="text-[11px] font-extrabold uppercase tracking-[0.2em] text-[#23A455]">
-              Futurex at a Glance
+              Futurex Group at a Glance
             </p>
 
             <h2 className="mt-5 text-[clamp(2rem,4.2vw,3.6rem)] font-extrabold leading-[1.12] tracking-[-0.055em]">
@@ -174,7 +174,7 @@ export default function OrganiserPage() {
             </h2>
 
             <p className="mx-auto mt-6 max-w-2xl text-sm leading-8 text-[#4A5750] sm:text-base">
-              Futurex develops specialised trade exhibitions
+              Futurex Group develops specialised trade exhibitions
               across industrial sectors, creating opportunities
               for businesses to reach relevant professional markets.
             </p>
@@ -187,9 +187,7 @@ export default function OrganiserPage() {
                   key={sector}
                   className="group flex min-h-[125px] flex-col justify-between bg-white p-6 transition-colors duration-300 hover:bg-[#EAF6EE]"
                 >
-                  <span className="text-[11px] font-extrabold text-[#16893F]">
-                    {String(index + 1).padStart(2, "0")}
-                  </span>
+               
 
                   <p className="mt-6 text-[13px] font-extrabold leading-6 text-[#102A1E] sm:text-[14px]">
                     {sector}
@@ -217,7 +215,7 @@ export default function OrganiserPage() {
             </h2>
 
             <p className="mt-6 max-w-lg text-[14px] leading-8 text-[#4A5750] sm:text-base">
-              With its headquarters in New Delhi, Futurex
+              With its headquarters in New Delhi, Futurex Group
               has an operational presence extending to Mumbai,
               Colombo, Kathmandu and Dhaka. The company
               conducts exhibition activities across India,
@@ -290,34 +288,7 @@ export default function OrganiserPage() {
         </div>
       </section>
 
-      {/* IIEV CONNECTION */}
-      <section className="border-y border-[#E1E9E2] bg-[#F5F9F5] py-14 sm:py-18">
-        <div className="mx-auto flex max-w-7xl flex-col justify-between gap-7 px-5 sm:px-8 lg:flex-row lg:items-center lg:px-10">
-          <AboutReveal className="max-w-2xl">
-            <p className="text-[11px] font-extrabold uppercase tracking-[0.18em] text-[#16893F]">
-              India International EV Show
-            </p>
-
-            <h2 className="mt-3 text-2xl font-extrabold tracking-tight text-[#102A1E] sm:text-3xl">
-              Organiser of IIEV Show
-            </h2>
-
-            <p className="mt-3 text-sm leading-7 text-[#4A5750]">
-              Futurex Group organises the India International EV
-              Show, bringing together businesses across the
-              electric vehicle and mobility technology industry.
-            </p>
-          </AboutReveal>
-
-          <Link
-            href="/about/"
-            className="inline-flex min-h-12 shrink-0 items-center justify-center gap-2 self-start rounded-full border border-[#23A455] px-6 text-[13px] font-bold text-[#16893F] transition-all duration-300 hover:bg-[#23A455] hover:text-white lg:self-center"
-          >
-            About IIEV Show
-            <ArrowUpRight size={16} aria-hidden="true" />
-          </Link>
-        </div>
-      </section>
+      
 
       {/* OFFICIAL WEBSITE CTA */}
       <section className="relative isolate overflow-hidden bg-[#091B13] py-18 text-white sm:py-24">
@@ -337,7 +308,7 @@ export default function OrganiserPage() {
           <h2 className="mt-6 text-[clamp(2rem,4.4vw,3.7rem)] font-extrabold leading-[1.12] tracking-[-0.055em]">
             Explore Futurex
             <span className="text-[#23A455]">
-              {" "}Trade Exhibitions.
+              {" "}Trade Fair & Pvt. Ltd. Exhibitions.
             </span>
           </h2>
 

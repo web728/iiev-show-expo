@@ -1,4 +1,3 @@
-
 import type { Metadata } from "next";
 import Image from "next/image";
 import Link from "next/link";
@@ -7,7 +6,6 @@ import {
   ArrowRight,
   ArrowUpRight,
   BatteryCharging,
-  Building2,
   CalendarDays,
   Check,
   Cpu,
@@ -16,7 +14,6 @@ import {
   MapPin,
   Network,
   PlugZap,
-  UsersRound,
   CarFront,
 } from "lucide-react";
 
@@ -153,7 +150,6 @@ export default async function WhyIievPage() {
       ===================================== */}
       <section className="relative overflow-hidden bg-white py-18 sm:py-24 lg:py-28">
         <div className="mx-auto max-w-7xl px-5 sm:px-8 lg:px-10">
-
           <AboutReveal className="mx-auto max-w-4xl text-center">
             <div className="flex justify-center">
               <Eyebrow>Why IIEV</Eyebrow>
@@ -217,7 +213,6 @@ export default async function WhyIievPage() {
       ===================================== */}
       <section className="bg-[#F5F9F5] py-18 sm:py-24 lg:py-28">
         <div className="mx-auto max-w-7xl px-5 sm:px-8 lg:px-10">
-
           <AboutReveal className="mb-12 flex flex-col justify-between gap-6 lg:flex-row lg:items-end">
             <div className="max-w-[690px]">
               <Eyebrow>What Makes IIEV Relevant</Eyebrow>
@@ -237,7 +232,6 @@ export default async function WhyIievPage() {
             </p>
           </AboutReveal>
 
-          {/* Premium grid with restrained hover effects */}
           <div className="grid gap-4 md:grid-cols-2">
             {advantages.map((item, index) => {
               const Icon = item.icon;
@@ -309,10 +303,6 @@ export default async function WhyIievPage() {
                           aria-hidden="true"
                         />
                       </div>
-
-                      <span className="text-xs font-extrabold text-[#8A9B8F]">
-                        {item.number} / 04
-                      </span>
                     </div>
 
                     <div className="relative mt-10">
@@ -336,8 +326,6 @@ export default async function WhyIievPage() {
           EV VALUE CHAIN
       ===================================== */}
       <section className="relative isolate overflow-hidden bg-[#091B13] py-20 text-white sm:py-26">
-
-        {/* Static brand SVG: lightweight and decorative */}
         <svg
           aria-hidden="true"
           viewBox="0 0 700 700"
@@ -376,7 +364,6 @@ export default async function WhyIievPage() {
         </svg>
 
         <div className="relative z-10 mx-auto max-w-7xl px-5 sm:px-8 lg:px-10">
-
           <AboutReveal className="mx-auto max-w-3xl text-center">
             <div className="flex justify-center">
               <Eyebrow light>Across the Value Chain</Eyebrow>
@@ -459,84 +446,87 @@ export default async function WhyIievPage() {
         </div>
       </section>
 
-      {/* =====================================
-          WHY PUNE
-      ===================================== */}
-      <section className="overflow-hidden bg-white py-18 sm:py-24 lg:py-28">
-        <div className="mx-auto grid max-w-7xl items-center gap-12 px-5 sm:px-8 lg:grid-cols-[1.05fr_.95fr] lg:gap-20 lg:px-10">
+      {/* WHY PUNE */}
+      <section className="relative isolate overflow-hidden bg-[#102A1E] py-16 text-white sm:py-24">
+        <svg
+          aria-hidden="true"
+          viewBox="0 0 520 520"
+          fill="none"
+          className="pointer-events-none absolute -right-40 -top-44 size-[520px] opacity-20"
+        >
+          <circle cx="260" cy="260" r="215" stroke="#23A455" />
+          <circle cx="260" cy="260" r="150" stroke="#23A455" />
+          <circle
+            cx="260"
+            cy="260"
+            r="90"
+            stroke="#23A455"
+            strokeDasharray="5 12"
+          />
+        </svg>
 
-          <AboutReveal className="relative">
-            <div className="relative aspect-[4/3] overflow-hidden rounded-[24px] bg-[#102A1E]">
-              <Image
-                src="/media/2026/expo-crowd-hall.webp"
-                alt="Exhibition visitors at the 2026 India International EV Show in Pune"
-                fill
-                sizes="(max-width:1024px) 100vw, 55vw"
-                className="object-cover transition-transform duration-700 hover:scale-[1.04]"
-              />
+        <div className="relative mx-auto grid max-w-7xl items-center gap-12 px-5 sm:px-8 lg:grid-cols-2 lg:gap-16 lg:px-10">
+          <AboutReveal>
+            <Eyebrow light>Why Pune</Eyebrow>
 
-              <div
-                aria-hidden="true"
-                className="pointer-events-none absolute inset-0 bg-gradient-to-t from-[#091B13]/50 via-transparent to-transparent"
-              />
-
-              <p className="absolute bottom-5 left-5 rounded-full border border-white/25 bg-[#091B13]/65 px-4 py-2 text-[10px] font-semibold text-white backdrop-blur-md sm:text-xs">
-                IIEV Show · Pune 2026
-              </p>
-            </div>
-
-            <div
-              aria-hidden="true"
-              className="absolute -bottom-4 -right-4 -z-10 h-36 w-36 rounded-3xl border-2 border-[#23A455]/35"
-            />
-          </AboutReveal>
-
-          <AboutReveal delay={0.1}>
-            <Eyebrow>The Pune Advantage</Eyebrow>
-
-            <h2 className="mt-5 text-[clamp(2rem,4.1vw,3.7rem)] font-extrabold leading-[1.13] tracking-[-0.055em] text-[#102A1E]">
-              Close to the
-              <span className="text-[#23A455]">
-                {" "}automotive ecosystem.
+            <h2 className="mt-5 text-[clamp(2rem,4.1vw,3.5rem)] font-extrabold leading-[1.12] tracking-[-0.05em]">
+              Close to an established
+              <span className="block text-[#23A455]">
+                automotive ecosystem.
               </span>
             </h2>
 
-            <p className="mt-6 text-[14px] leading-8 text-[#4A5750] sm:text-base">
-              Pune and Pimpri-Chinchwad are established
-              centres for automotive engineering and
-              manufacturing. The region offers access
-              to vehicle manufacturers, component suppliers,
-              engineering companies and technology providers.
+            <p className="mt-6 text-sm leading-8 text-white/75 sm:text-base">
+              Pune and Pimpri-Chinchwad are recognised
+              centres for automotive manufacturing,
+              engineering and component supply.
+              The region offers a practical meeting
+              point for companies working across
+              the electric mobility value chain.
             </p>
 
-            <p className="mt-4 text-[14px] leading-8 text-[#4A5750] sm:text-base">
-              Hosting IIEV here creates a practical
-              meeting point for EV businesses
-              seeking industrial connections and
-              opportunities across Maharashtra
-              and other markets.
-            </p>
+            <div className="mt-8 space-y-4 border-t border-white/15 pt-6">
+              <div className="flex items-start gap-3">
+                <CalendarDays
+                  size={19}
+                  className="mt-0.5 shrink-0 text-[#23A455]"
+                  aria-hidden="true"
+                />
 
-            <div className="mt-8 border-t border-[#DFE8E1] pt-6">
-              <div className="flex items-start gap-4">
-                <span className="flex size-11 shrink-0 items-center justify-center rounded-xl bg-[#EAF6EE] text-[#16893F]">
-                  <MapPin
-                    size={21}
-                    strokeWidth={1.8}
-                    aria-hidden="true"
-                  />
+                <span className="text-sm font-semibold">
+                  {edition.dateLabel}
                 </span>
-
-                <div>
-                  <p className="text-[11px] font-extrabold uppercase tracking-[0.12em] text-[#16893F]">
-                    IIEV 2027 Venue
-                  </p>
-
-                  <p className="mt-2 text-[13px] font-semibold leading-7 text-[#102A1E]">
-                    {venue}
-                  </p>
-                </div>
               </div>
+
+              <div className="flex items-start gap-3">
+                <MapPin
+                  size={19}
+                  className="mt-0.5 shrink-0 text-[#23A455]"
+                  aria-hidden="true"
+                />
+
+                <span className="text-sm leading-7 text-white/85">
+                  {venue}
+                </span>
+              </div>
+            </div>
+          </AboutReveal>
+
+          <AboutReveal delay={0.1}>
+            <div className="relative aspect-[5/4] overflow-hidden rounded-[24px] bg-[#091B13]">
+              <Image
+                src="/media/2026/expo-river-stall.webp"
+                alt="Exhibition stand at IIEV Show 2026"
+                fill
+                sizes="(max-width:1024px) 100vw, 50vw"
+                className="object-cover transition-transform duration-700 hover:scale-[1.035]"
+              />
+
+              <div className="absolute inset-0 bg-gradient-to-t from-[#091B13]/65 via-transparent to-transparent" />
+
+              <p className="absolute bottom-5 left-5 rounded-full border border-white/20 bg-[#091B13]/70 px-4 py-2 text-xs font-semibold backdrop-blur-sm">
+                IIEV Show 2026
+              </p>
             </div>
           </AboutReveal>
         </div>
@@ -547,7 +537,6 @@ export default async function WhyIievPage() {
       ===================================== */}
       <section className="bg-[#F5F9F5] py-18 sm:py-24">
         <div className="mx-auto max-w-7xl px-5 sm:px-8 lg:px-10">
-
           <AboutReveal className="mx-auto max-w-3xl text-center">
             <div className="flex justify-center">
               <Eyebrow>Industry Participation</Eyebrow>
@@ -598,9 +587,7 @@ export default async function WhyIievPage() {
       ===================================== */}
       <section className="bg-white py-18 sm:py-24">
         <div className="mx-auto max-w-7xl px-5 sm:px-8 lg:px-10">
-
           <AboutReveal className="grid items-center gap-10 lg:grid-cols-[.85fr_1.15fr] lg:gap-20">
-
             <div>
               <Eyebrow>Previous Edition</Eyebrow>
 
@@ -644,15 +631,6 @@ export default async function WhyIievPage() {
                   className="object-cover transition-transform duration-700 hover:scale-[1.035]"
                 />
               </div>
-
-              <div className="absolute -bottom-4 left-4 rounded-xl bg-[#102A1E] px-5 py-3 text-white shadow-lg sm:left-7">
-                <p className="text-[10px] font-bold uppercase tracking-[0.13em] text-[#23A455]">
-                  IIEV Show 2026
-                </p>
-                <p className="mt-1 text-[11px] font-semibold">
-                  8th Edition · Pune
-                </p>
-              </div>
             </div>
           </AboutReveal>
         </div>
@@ -662,8 +640,6 @@ export default async function WhyIievPage() {
           CTA
       ===================================== */}
       <section className="relative isolate overflow-hidden bg-[#102A1E] py-18 text-white sm:py-24">
-
-        {/* Decorative SVG */}
         <svg
           viewBox="0 0 500 500"
           fill="none"
@@ -692,7 +668,6 @@ export default async function WhyIievPage() {
         </svg>
 
         <div className="relative mx-auto max-w-7xl px-5 sm:px-8 lg:px-10">
-
           <AboutReveal className="mx-auto max-w-4xl text-center">
             <div className="flex justify-center">
               <Eyebrow light>Take Part in IIEV 2027</Eyebrow>
@@ -713,7 +688,6 @@ export default async function WhyIievPage() {
             </p>
 
             <div className="mt-9 flex flex-wrap items-center justify-center gap-3">
-
               <Link
                 href="/exhibit/"
                 className="
@@ -750,26 +724,6 @@ export default async function WhyIievPage() {
                   className="transition-transform duration-300 group-hover:translate-x-1"
                 />
               </Link>
-            </div>
-
-            <div className="mt-9 flex flex-wrap justify-center gap-x-6 gap-y-3 border-t border-white/10 pt-7 text-[12px] font-medium text-white/60">
-              <span className="inline-flex items-center gap-2">
-                <CalendarDays
-                  size={16}
-                  className="text-[#23A455]"
-                  aria-hidden="true"
-                />
-                {edition.dateLabel}
-              </span>
-
-              <span className="inline-flex items-center gap-2">
-                <MapPin
-                  size={16}
-                  className="text-[#23A455]"
-                  aria-hidden="true"
-                />
-                {edition.venue.city}, {edition.venue.region}
-              </span>
             </div>
           </AboutReveal>
         </div>

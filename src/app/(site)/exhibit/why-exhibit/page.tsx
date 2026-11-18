@@ -1,4 +1,3 @@
-
 import type { Metadata } from "next";
 import Image from "next/image";
 import Link from "next/link";
@@ -8,11 +7,7 @@ import {
   BadgeCheck,
   BookOpen,
   CalendarDays,
-  Check,
-  ClipboardCheck,
-  ClipboardList,
   Factory,
-  FileText,
   Handshake,
   LayoutGrid,
   MapPin,
@@ -38,42 +33,38 @@ export const metadata: Metadata = pageMetadata({
   path: "/exhibit/why-exhibit/",
 });
 
+const BOOK_STALL_HREF = "/exhibit/book-a-stall/";
+
 const benefits: {
-  number: string;
   title: string;
   description: string;
   Icon: LucideIcon;
 }[] = [
   {
-    number: "01",
     title: "Showcase your products",
     description:
       "Present electric vehicles, components, charging solutions, battery technologies and manufacturing equipment to an industry-focused audience.",
     Icon: Presentation,
   },
   {
-    number: "02",
     title: "Meet potential buyers",
     description:
       "Engage with dealers, distributors, fleet operators, engineering teams and other professionals evaluating EV solutions.",
     Icon: UsersRound,
   },
   {
-    number: "03",
     title: "Explore partnerships",
     description:
       "Connect with manufacturers, technology providers, system integrators and prospective business partners.",
     Icon: Handshake,
   },
   {
-    number: "04",
     title: "Discuss technical needs",
     description:
       "Demonstrate capabilities, answer product questions and understand the requirements of different applications.",
     Icon: Factory,
   },
   {
-    number: "05",
     title: "Understand the market",
     description:
       "Observe technology developments, compare available solutions and gather direct feedback from industry professionals.",
@@ -83,25 +74,21 @@ const benefits: {
 
 const process = [
   {
-    number: "01",
     title: "Send an enquiry",
     description:
       "Share your products, industry segment and approximate exhibition space requirement.",
   },
   {
-    number: "02",
     title: "Review available options",
     description:
       "The exhibitor sales team shares available locations and applicable participation terms.",
   },
   {
-    number: "03",
     title: "Confirm your booking",
     description:
       "Complete the participation contract and follow the payment schedule stated in the agreement.",
   },
   {
-    number: "04",
     title: "Prepare your stand",
     description:
       "Receive the exhibitor manual, portal access and directory-listing invitation.",
@@ -147,27 +134,67 @@ const manualTopics: {
 
 const preparation = [
   {
-    number: "01",
     phase: "Before",
     title: "Plan your participation",
     description:
       "Define your objectives, prepare product specifications and invite relevant customers or prospects.",
   },
   {
-    number: "02",
     phase: "During",
     title: "Engage and demonstrate",
     description:
       "Have technical and commercial representatives available, demonstrate products and record enquiries.",
   },
   {
-    number: "03",
     phase: "After",
     title: "Follow up",
     description:
       "Contact relevant prospects, share requested information and evaluate the outcomes of participation.",
   },
 ];
+
+/* ---------- Shared pieces ---------- */
+
+function MotionStyles() {
+  return (
+    <style>{`
+      @keyframes iiev-spin { to { transform: rotate(360deg); } }
+      @keyframes iiev-spin-rev { to { transform: rotate(-360deg); } }
+      @keyframes iiev-float {
+        0%, 100% { transform: translateY(0); }
+        50% { transform: translateY(-10px); }
+      }
+      @keyframes iiev-shimmer {
+        0% { transform: translateX(-130%) skewX(-20deg); }
+        100% { transform: translateX(260%) skewX(-20deg); }
+      }
+      @keyframes iiev-ring {
+        0% { box-shadow: 0 0 0 0 rgba(35,164,85,.45); }
+        70% { box-shadow: 0 0 0 16px rgba(35,164,85,0); }
+        100% { box-shadow: 0 0 0 0 rgba(35,164,85,0); }
+      }
+      @keyframes iiev-dot {
+        0%, 100% { transform: scale(1); opacity: 1; }
+        50% { transform: scale(1.5); opacity: .55; }
+      }
+      @keyframes iiev-glow {
+        0%, 100% { opacity: .35; transform: scale(1); }
+        50% { opacity: .65; transform: scale(1.08); }
+      }
+      .iiev-spin { animation: iiev-spin 70s linear infinite; }
+      .iiev-spin-rev { animation: iiev-spin-rev 90s linear infinite; }
+      .iiev-float { animation: iiev-float 6s ease-in-out infinite; }
+      .iiev-shimmer { animation: iiev-shimmer 3.4s ease-in-out infinite; }
+      .iiev-ring { animation: iiev-ring 2.4s ease-out infinite; }
+      .iiev-dot { animation: iiev-dot 2.2s ease-in-out infinite; }
+      .iiev-glow { animation: iiev-glow 7s ease-in-out infinite; }
+      @media (prefers-reduced-motion: reduce) {
+        .iiev-spin, .iiev-spin-rev, .iiev-float, .iiev-shimmer,
+        .iiev-ring, .iiev-dot, .iiev-glow { animation: none !important; }
+      }
+    `}</style>
+  );
+}
 
 function Eyebrow({
   children,
@@ -209,9 +236,7 @@ function SectionHeading({
   return (
     <AboutReveal
       className={
-        center
-          ? "mx-auto max-w-3xl text-center"
-          : "max-w-3xl"
+        center ? "mx-auto max-w-3xl text-center" : "max-w-3xl"
       }
     >
       <div className={center ? "flex justify-center" : ""}>
@@ -224,13 +249,55 @@ function SectionHeading({
       </h2>
 
       {description && (
-        <p className="mt-5 text-[13px] leading-7 text-[#4A5750] sm:text-[15px] sm:leading-8">
+        <p
+          className={`mt-5 text-[13px] leading-7 text-[#4A5750] sm:text-[15px] sm:leading-8 ${
+            center ? "mx-auto" : ""
+          }`}
+        >
           {description}
         </p>
       )}
     </AboutReveal>
   );
 }
+
+/** Primary CTA with shimmer sweep + pulsing ring */
+function BookStallButton({ large = false }: { large?: boolean }) {
+  return (
+    <Link
+      href={BOOK_STALL_HREF}
+      className={`
+        iiev-ring group relative inline-flex items-center justify-center
+        gap-2 overflow-hidden rounded-full bg-[#23A455]
+        font-extrabold text-white
+        transition-all duration-300
+        hover:-translate-y-0.5 hover:bg-[#16893F]
+        hover:shadow-[0_18px_40px_-16px_rgba(35,164,85,.7)]
+        focus-visible:outline-2 focus-visible:outline-offset-4
+        focus-visible:outline-[#23A455]
+        ${
+          large
+            ? "min-h-14 px-9 text-[14px]"
+            : "min-h-12 px-8 text-[13px]"
+        }
+      `}
+    >
+      <span
+        aria-hidden="true"
+        className="iiev-shimmer pointer-events-none absolute inset-y-0 left-0 w-1/3 bg-gradient-to-r from-transparent via-white/30 to-transparent"
+      />
+      <span className="relative">Book Your Stall</span>
+      <ArrowUpRight
+        size={18}
+        strokeWidth={2}
+        aria-hidden="true"
+        className="relative transition-transform duration-300 group-hover:-translate-y-0.5 group-hover:translate-x-0.5"
+      />
+    </Link>
+  );
+}
+
+/* ---------- Page ---------- */
 
 export default async function WhyExhibitPage() {
   const edition = await getCurrentEdition();
@@ -246,6 +313,8 @@ export default async function WhyExhibitPage() {
 
   return (
     <>
+      <MotionStyles />
+
       {/* SHARED PAGE HERO */}
       <PageHero
         eyebrow="Exhibit at IIEV 2027"
@@ -260,21 +329,75 @@ export default async function WhyExhibitPage() {
         ]}
       />
 
-      {/* INTRODUCTION */}
-      <section className="bg-white py-16 sm:py-24">
+      {/* =====================================
+          INTRODUCTION + BOOK BUTTON
+      ===================================== */}
+      <section className="relative isolate overflow-hidden bg-white py-18 sm:py-24 lg:py-28">
+        {/* soft glow */}
+        <div
+          aria-hidden="true"
+          className="iiev-glow pointer-events-none absolute left-1/2 top-0 -z-10 h-[420px] w-[720px] -translate-x-1/2 rounded-full bg-[radial-gradient(closest-side,rgba(35,164,85,.14),transparent)]"
+        />
+
+        {/* rotating rings */}
+        <svg
+          viewBox="0 0 400 400"
+          fill="none"
+          aria-hidden="true"
+          className="iiev-spin pointer-events-none absolute -left-32 top-10 -z-10 size-[400px] text-[#23A455] opacity-[0.08]"
+        >
+          <circle cx="200" cy="200" r="175" stroke="currentColor" />
+          <circle
+            cx="200"
+            cy="200"
+            r="120"
+            stroke="currentColor"
+            strokeDasharray="5 11"
+          />
+          <circle cx="200" cy="25" r="5" fill="currentColor" />
+        </svg>
+
+        <svg
+          viewBox="0 0 400 400"
+          fill="none"
+          aria-hidden="true"
+          className="iiev-spin-rev pointer-events-none absolute -right-32 bottom-0 -z-10 size-[400px] text-[#23A455] opacity-[0.08]"
+        >
+          <circle cx="200" cy="200" r="175" stroke="currentColor" />
+          <circle
+            cx="200"
+            cy="200"
+            r="115"
+            stroke="currentColor"
+            strokeDasharray="5 11"
+          />
+          <circle cx="375" cy="200" r="5" fill="currentColor" />
+        </svg>
+
         <div className="mx-auto max-w-7xl px-5 sm:px-8 lg:px-10">
           <SectionHeading
             center
             eyebrow="Business Opportunities"
             title="Take your products"
             highlight="to the industry."
-            description="India International EV Show brings vehicle manufacturers, component suppliers, technology developers and other electric mobility businesses into a focused exhibition environment. Exhibiting provides opportunities for product discovery, technical discussions and professional networking."
+            description="9th India International EV Show brings vehicle manufacturers, component suppliers, technology developers and other electric mobility businesses into a focused exhibition environment. Exhibiting provides opportunities for product discovery, technical discussions and professional networking."
           />
+
+          {/* Centered CTA */}
+          <AboutReveal
+            delay={0.12}
+            className="mt-10 flex flex-col items-center gap-6"
+          >
+            <BookStallButton large />
+ 
+          </AboutReveal>
         </div>
       </section>
 
-      {/* EXHIBITION BENEFITS */}
-      <section className="bg-[#F5F9F5] py-16 sm:py-24">
+      {/* =====================================
+          EXHIBITION BENEFITS (BENTO)
+      ===================================== */}
+      <section className="relative overflow-hidden bg-[#F5F9F5] py-18 sm:py-24">
         <div className="mx-auto max-w-7xl px-5 sm:px-8 lg:px-10">
           <SectionHeading
             eyebrow="Why Participate"
@@ -283,42 +406,71 @@ export default async function WhyExhibitPage() {
             description="An opportunity to meet relevant industry participants and discuss products directly with potential customers and partners."
           />
 
-          <div className="mt-11 grid gap-4 md:grid-cols-6">
+          <div className="mt-12 grid gap-4 md:grid-cols-6">
             {benefits.map((item, index) => {
               const Icon = item.Icon;
 
               return (
                 <AboutReveal
-                  key={item.number}
-                  delay={(index % 3) * 0.06}
+                  key={item.title}
+                  delay={(index % 3) * 0.07}
                   className={`h-full ${
-                    index < 2
-                      ? "md:col-span-3"
-                      : "md:col-span-2"
+                    index < 2 ? "md:col-span-3" : "md:col-span-2"
                   }`}
                 >
-                  <article className="group relative flex h-full min-h-[245px] flex-col justify-between overflow-hidden rounded-[22px] border border-[#DDE8DF] bg-white p-7 transition-all duration-300 hover:-translate-y-1 hover:border-[#23A455]/50 hover:shadow-[0_20px_48px_-34px_rgba(9,27,19,0.35)] sm:p-8">
+                  <article
+                    className="
+                      group relative flex h-full min-h-[260px] flex-col
+                      justify-between overflow-hidden rounded-[24px]
+                      border border-[#DDE8DF] bg-white p-7
+                      transition-all duration-500
+                      hover:-translate-y-1.5
+                      hover:border-[#23A455]/50
+                      hover:shadow-[0_30px_60px_-38px_rgba(9,27,19,.45)]
+                      sm:p-8
+                    "
+                  >
+                    {/* top accent bar */}
+                    <span
+                      aria-hidden="true"
+                      className="absolute inset-x-0 top-0 h-[3px] origin-left scale-x-0 bg-gradient-to-r from-[#23A455] to-[#7BD69A] transition-transform duration-500 group-hover:scale-x-100"
+                    />
+
+                    {/* hover glow */}
+                    <span
+                      aria-hidden="true"
+                      className="pointer-events-none absolute -bottom-24 -right-24 size-64 rounded-full bg-[radial-gradient(closest-side,rgba(35,164,85,.16),transparent)] opacity-0 transition-opacity duration-500 group-hover:opacity-100"
+                    />
+
                     <svg
                       viewBox="0 0 160 160"
                       fill="none"
                       aria-hidden="true"
-                      className="pointer-events-none absolute -right-8 -top-8 size-40 text-[#23A455] opacity-[0.07]"
+                      className="iiev-spin pointer-events-none absolute -right-8 -top-8 size-40 text-[#23A455] opacity-[0.08]"
                     >
                       <circle cx="80" cy="80" r="66" stroke="currentColor" />
-                      <circle cx="80" cy="80" r="40" stroke="currentColor" />
-                      <path d="M80 14V40M120 80H146" stroke="currentColor" />
+                      <circle
+                        cx="80"
+                        cy="80"
+                        r="40"
+                        stroke="currentColor"
+                        strokeDasharray="4 8"
+                      />
+                      <circle cx="80" cy="14" r="3.5" fill="currentColor" />
                     </svg>
 
-                    <div className="relative flex items-start justify-between">
-                      <span className="flex size-12 items-center justify-center rounded-xl bg-[#E9F6ED] text-[#16893F] transition-colors duration-300 group-hover:bg-[#23A455] group-hover:text-white">
-                        <Icon size={24} strokeWidth={1.8} aria-hidden="true" />
+                    <div className="relative">
+                      <span className="flex size-14 items-center justify-center rounded-2xl bg-[#E9F6ED] text-[#16893F] transition-all duration-500 group-hover:rotate-[-6deg] group-hover:scale-105 group-hover:bg-[#23A455] group-hover:text-white">
+                        <Icon
+                          size={26}
+                          strokeWidth={1.75}
+                          aria-hidden="true"
+                        />
                       </span>
-
-                    
                     </div>
 
-                    <div className="relative mt-9">
-                      <h3 className="text-xl font-extrabold tracking-tight text-[#102A1E]">
+                    <div className="relative mt-10">
+                      <h3 className="text-xl font-extrabold tracking-[-0.03em] text-[#102A1E] sm:text-[22px]">
                         {item.title}
                       </h3>
 
@@ -334,96 +486,12 @@ export default async function WhyExhibitPage() {
         </div>
       </section>
 
-      {/* WHY PUNE */}
-      <section className="relative isolate overflow-hidden bg-[#102A1E] py-16 text-white sm:py-24">
-        <svg
-          aria-hidden="true"
-          viewBox="0 0 520 520"
-          fill="none"
-          className="pointer-events-none absolute -right-40 -top-44 size-[520px] opacity-20"
-        >
-          <circle cx="260" cy="260" r="215" stroke="#23A455" />
-          <circle cx="260" cy="260" r="150" stroke="#23A455" />
-          <circle
-            cx="260"
-            cy="260"
-            r="90"
-            stroke="#23A455"
-            strokeDasharray="5 12"
-          />
-        </svg>
-
-        <div className="relative mx-auto grid max-w-7xl items-center gap-12 px-5 sm:px-8 lg:grid-cols-2 lg:gap-16 lg:px-10">
-          <AboutReveal>
-            <Eyebrow light>Why Pune</Eyebrow>
-
-            <h2 className="mt-5 text-[clamp(2rem,4.1vw,3.5rem)] font-extrabold leading-[1.12] tracking-[-0.05em]">
-              Close to an established
-              <span className="block text-[#23A455]">
-                automotive ecosystem.
-              </span>
-            </h2>
-
-            <p className="mt-6 text-sm leading-8 text-white/75 sm:text-base">
-              Pune and Pimpri-Chinchwad are recognised
-              centres for automotive manufacturing,
-              engineering and component supply.
-              The region offers a practical meeting
-              point for companies working across
-              the electric mobility value chain.
-            </p>
-
-            <div className="mt-8 space-y-4 border-t border-white/15 pt-6">
-              <div className="flex items-start gap-3">
-                <CalendarDays
-                  size={19}
-                  className="mt-0.5 shrink-0 text-[#23A455]"
-                  aria-hidden="true"
-                />
-
-                <span className="text-sm font-semibold">
-                  {edition.dateLabel}
-                </span>
-              </div>
-
-              <div className="flex items-start gap-3">
-                <MapPin
-                  size={19}
-                  className="mt-0.5 shrink-0 text-[#23A455]"
-                  aria-hidden="true"
-                />
-
-                <span className="text-sm leading-7 text-white/85">
-                  {venue}
-                </span>
-              </div>
-            </div>
-          </AboutReveal>
-
-          <AboutReveal delay={0.1}>
-            <div className="relative aspect-[5/4] overflow-hidden rounded-[24px] bg-[#091B13]">
-              <Image
-                src="/media/2026/expo-river-stall.webp"
-                alt="Exhibition stand at IIEV Show 2026"
-                fill
-                sizes="(max-width:1024px) 100vw, 50vw"
-                className="object-cover transition-transform duration-700 hover:scale-[1.035]"
-              />
-
-              <div className="absolute inset-0 bg-gradient-to-t from-[#091B13]/65 via-transparent to-transparent" />
-
-              <p className="absolute bottom-5 left-5 rounded-full border border-white/20 bg-[#091B13]/70 px-4 py-2 text-xs font-semibold backdrop-blur-sm">
-                IIEV Show 2026
-              </p>
-            </div>
-          </AboutReveal>
-        </div>
-      </section>
-
-      {/* PARTICIPATION PROCESS */}
+      {/* =====================================
+          PARTICIPATION PROCESS
+      ===================================== */}
       <section
         id="participation-process"
-        className="scroll-mt-28 bg-white py-16 sm:py-24"
+        className="relative scroll-mt-28 overflow-hidden bg-white py-18 sm:py-24"
       >
         <div className="mx-auto max-w-7xl px-5 sm:px-8 lg:px-10">
           <SectionHeading
@@ -433,23 +501,58 @@ export default async function WhyExhibitPage() {
             description="The steps below explain how exhibitors move from their initial enquiry to preparing for the event."
           />
 
-          <div className="mt-11 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+          <div className="mt-12 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
             {process.map((step, index) => (
               <AboutReveal
-                key={step.number}
-                delay={index * 0.06}
+                key={step.title}
+                delay={index * 0.08}
                 className="h-full"
               >
-                <article className="group flex h-full min-h-[235px] flex-col rounded-[20px] border border-[#DFE8E1] bg-[#F8FBF8] p-7 transition-all duration-300 hover:-translate-y-0.5 hover:border-[#23A455]/45">
-                 
+                <article
+                  className="
+                    group relative flex h-full min-h-[240px] flex-col
+                    overflow-hidden rounded-[22px]
+                    border border-[#DFE8E1] bg-[#F8FBF8] p-7
+                    transition-all duration-500
+                    hover:-translate-y-1
+                    hover:border-[#23A455]/50
+                    hover:bg-white
+                    hover:shadow-[0_26px_55px_-38px_rgba(9,27,19,.45)]
+                  "
+                >
+                  {/* connector row */}
+                  <div className="flex items-center gap-3">
+                    <span className="relative flex size-4 items-center justify-center">
+                      <span
+                        aria-hidden="true"
+                        className="iiev-dot absolute size-4 rounded-full bg-[#23A455]/30"
+                      />
+                      <span className="relative size-2.5 rounded-full bg-[#23A455]" />
+                    </span>
 
-                  <h3 className="mt-9 text-lg font-extrabold text-[#102A1E]">
+                    <span
+                      aria-hidden="true"
+                      className={`h-px flex-1 bg-gradient-to-r from-[#23A455]/60 to-transparent ${
+                        index === process.length - 1
+                          ? "opacity-0"
+                          : ""
+                      }`}
+                    />
+                  </div>
+
+                  <h3 className="mt-10 text-lg font-extrabold tracking-[-0.02em] text-[#102A1E]">
                     {step.title}
                   </h3>
 
                   <p className="mt-3 text-[13px] leading-7 text-[#4A5750]">
                     {step.description}
                   </p>
+
+                  <ArrowRight
+                    size={18}
+                    aria-hidden="true"
+                    className="mt-auto pt-0 text-[#23A455] opacity-0 transition-all duration-300 group-hover:translate-x-1 group-hover:opacity-100"
+                  />
                 </article>
               </AboutReveal>
             ))}
@@ -457,78 +560,100 @@ export default async function WhyExhibitPage() {
         </div>
       </section>
 
-     
-
-      {/* EXHIBITOR MANUAL */}
+      {/* =====================================
+          EXHIBITOR MANUAL (DARK)
+      ===================================== */}
       <section
         id="exhibitor-manual"
-        className="scroll-mt-28 bg-white py-16 sm:py-24"
+        className="relative isolate scroll-mt-28 overflow-hidden bg-[#091B13] py-18 text-white sm:py-24"
       >
-        <div className="mx-auto max-w-7xl px-5 sm:px-8 lg:px-10">
-          <SectionHeading
-            center
-            eyebrow="Exhibitor Manual"
-            title="Everything needed"
-            highlight="for show preparation."
-            description="The exhibitor manual provides operational information, technical requirements and venue procedures for participating companies."
+        <svg
+          viewBox="0 0 600 600"
+          fill="none"
+          aria-hidden="true"
+          className="iiev-spin pointer-events-none absolute -right-48 -top-48 -z-10 size-[600px] opacity-30"
+        >
+          <circle cx="300" cy="300" r="250" stroke="#23A455" />
+          <circle cx="300" cy="300" r="185" stroke="#23A455" />
+          <circle
+            cx="300"
+            cy="300"
+            r="120"
+            stroke="#23A455"
+            strokeDasharray="5 12"
           />
+          <circle cx="300" cy="50" r="5" fill="#23A455" />
+        </svg>
 
-          <div className="mt-11 grid gap-px overflow-hidden rounded-[22px] border border-[#DFE8E1] bg-[#DFE8E1] sm:grid-cols-2 lg:grid-cols-3">
+        <div className="mx-auto max-w-7xl px-5 sm:px-8 lg:px-10">
+          <AboutReveal className="mx-auto max-w-3xl text-center">
+            <div className="flex justify-center">
+              <Eyebrow light>Exhibitor Manual</Eyebrow>
+            </div>
+
+            <h2 className="mt-5 text-[clamp(2rem,4.2vw,3.6rem)] font-extrabold leading-[1.12] tracking-[-0.05em]">
+              Everything needed
+              <span className="text-[#23A455]">
+                {" "}for show preparation.
+              </span>
+            </h2>
+
+            <p className="mx-auto mt-5 text-[13px] leading-7 text-white/65 sm:text-[15px] sm:leading-8">
+              The exhibitor manual provides operational
+              information, technical requirements and venue
+              procedures for participating companies.
+            </p>
+          </AboutReveal>
+
+          <div className="mt-12 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
             {manualTopics.map(({ title, description, Icon }, index) => (
               <AboutReveal
                 key={title}
-                delay={(index % 3) * 0.05}
+                delay={(index % 3) * 0.06}
                 className="h-full"
               >
-                <article className="group h-full min-h-[185px] bg-white p-7 transition-colors duration-300 hover:bg-[#F0F8F2]">
-                  <Icon
-                    size={24}
-                    strokeWidth={1.8}
-                    className="text-[#16893F]"
+                <article
+                  className="
+                    group relative h-full min-h-[190px] overflow-hidden
+                    rounded-[20px] border border-white/12
+                    bg-white/[0.04] p-7 backdrop-blur-sm
+                    transition-all duration-500
+                    hover:-translate-y-1
+                    hover:border-[#23A455]/60
+                    hover:bg-white/[0.08]
+                  "
+                >
+                  <span
                     aria-hidden="true"
+                    className="pointer-events-none absolute -right-10 -top-10 size-32 rounded-full bg-[radial-gradient(closest-side,rgba(35,164,85,.25),transparent)] opacity-0 transition-opacity duration-500 group-hover:opacity-100"
                   />
 
-                  <h3 className="mt-7 text-[15px] font-extrabold text-[#102A1E]">
+                  <span className="relative flex size-12 items-center justify-center rounded-xl bg-[#23A455]/15 text-[#23A455] transition-all duration-500 group-hover:scale-105 group-hover:bg-[#23A455] group-hover:text-white">
+                    <Icon
+                      size={23}
+                      strokeWidth={1.8}
+                      aria-hidden="true"
+                    />
+                  </span>
+
+                  <h3 className="relative mt-7 text-[15px] font-extrabold">
                     {title}
                   </h3>
 
-                  <p className="mt-3 text-[13px] leading-7 text-[#4A5750]">
+                  <p className="relative mt-3 text-[13px] leading-7 text-white/65">
                     {description}
                   </p>
                 </article>
               </AboutReveal>
             ))}
           </div>
-
-          <AboutReveal className="mt-7">
-            <div className="flex items-start gap-4 rounded-2xl border border-[#DDE8DF] bg-[#F5F9F5] p-6">
-              <FileText
-                size={22}
-                strokeWidth={1.8}
-                className="mt-0.5 shrink-0 text-[#16893F]"
-                aria-hidden="true"
-              />
-
-              <div>
-                <h3 className="text-sm font-extrabold text-[#102A1E]">
-                  2027 Exhibitor Manual
-                </h3>
-
-                <p className="mt-2 text-[13px] leading-7 text-[#4A5750]">
-                  The manual will be shared with confirmed
-                  exhibitors and published in the Downloads
-                  section when available. Detailed deadlines,
-                  technical specifications and rules should
-                  be checked against that document.
-                </p>
-              </div>
-            </div>
-          </AboutReveal>
         </div>
       </section>
 
-      {/* DIRECTORY AND BADGES */}
-      <section className="bg-[#F5F9F5] py-16 sm:py-24">
+      {/* =====================================
+          DIRECTORY AND BADGES
+      ===================================== */}
+      <section className="bg-[#F5F9F5] py-18 sm:py-24">
         <div className="mx-auto max-w-7xl px-5 sm:px-8 lg:px-10">
           <SectionHeading
             eyebrow="After Confirmation"
@@ -537,59 +662,66 @@ export default async function WhyExhibitPage() {
             description="Once participation is confirmed, exhibitors receive further instructions for their company listing and event access."
           />
 
-          <div className="mt-10 grid gap-5 md:grid-cols-2">
-            <AboutReveal className="h-full">
-              <article className="h-full rounded-[22px] border border-[#DFE8E1] bg-white p-7 sm:p-9">
-                <BookOpen
-                  size={26}
-                  strokeWidth={1.8}
-                  className="text-[#16893F]"
-                  aria-hidden="true"
-                />
+          <div className="mt-11 grid gap-5 md:grid-cols-2">
+            {[
+              {
+                Icon: BookOpen,
+                title: "Exhibitor Directory",
+                text: "Confirmed exhibitors are invited to submit a company description, product categories, logo and website for the online exhibitor directory. Listings are checked before publication, and stall numbers are added once allocated.",
+              },
+              {
+                Icon: BadgeCheck,
+                title: "Exhibitor Badges",
+                text: "Exhibitor badges are issued per stall. The allocation applicable to different stall sizes, together with the collection and access instructions, will be provided in the exhibitor manual.",
+              },
+            ].map(({ Icon, title, text }, index) => (
+              <AboutReveal
+                key={title}
+                delay={index * 0.08}
+                className="h-full"
+              >
+                <article
+                  className="
+                    group relative h-full overflow-hidden rounded-[24px]
+                    border border-[#DFE8E1] bg-white p-7
+                    transition-all duration-500
+                    hover:-translate-y-1
+                    hover:border-[#23A455]/50
+                    hover:shadow-[0_28px_58px_-40px_rgba(9,27,19,.45)]
+                    sm:p-9
+                  "
+                >
+                  <span
+                    aria-hidden="true"
+                    className="absolute inset-y-0 left-0 w-[3px] origin-top scale-y-0 bg-gradient-to-b from-[#23A455] to-[#7BD69A] transition-transform duration-500 group-hover:scale-y-100"
+                  />
 
-                <h3 className="mt-7 text-xl font-extrabold text-[#102A1E]">
-                  Exhibitor Directory
-                </h3>
+                  <span className="flex size-14 items-center justify-center rounded-2xl bg-[#E9F6ED] text-[#16893F] transition-all duration-500 group-hover:bg-[#23A455] group-hover:text-white">
+                    <Icon
+                      size={27}
+                      strokeWidth={1.75}
+                      aria-hidden="true"
+                    />
+                  </span>
 
-                <p className="mt-4 text-[13px] leading-7 text-[#4A5750]">
-                  Confirmed exhibitors are invited to submit
-                  a company description, product categories,
-                  logo and website for the online exhibitor
-                  directory. Listings are checked before
-                  publication, and stall numbers are added
-                  once allocated.
-                </p>
-              </article>
-            </AboutReveal>
+                  <h3 className="mt-8 text-xl font-extrabold tracking-[-0.03em] text-[#102A1E]">
+                    {title}
+                  </h3>
 
-            <AboutReveal delay={0.08} className="h-full">
-              <article className="h-full rounded-[22px] border border-[#DFE8E1] bg-white p-7 sm:p-9">
-                <BadgeCheck
-                  size={26}
-                  strokeWidth={1.8}
-                  className="text-[#16893F]"
-                  aria-hidden="true"
-                />
-
-                <h3 className="mt-7 text-xl font-extrabold text-[#102A1E]">
-                  Exhibitor Badges
-                </h3>
-
-                <p className="mt-4 text-[13px] leading-7 text-[#4A5750]">
-                  Exhibitor badges are issued per stall.
-                  The allocation applicable to different
-                  stall sizes, together with the collection
-                  and access instructions, will be provided
-                  in the exhibitor manual.
-                </p>
-              </article>
-            </AboutReveal>
+                  <p className="mt-4 text-[13px] leading-7 text-[#4A5750]">
+                    {text}
+                  </p>
+                </article>
+              </AboutReveal>
+            ))}
           </div>
         </div>
       </section>
 
-      {/* EXHIBITOR PREPARATION */}
-      <section className="bg-white py-16 sm:py-24">
+      {/* =====================================
+          EXHIBITOR PREPARATION
+      ===================================== */}
+      <section className="bg-white py-18 sm:py-24">
         <div className="mx-auto max-w-7xl px-5 sm:px-8 lg:px-10">
           <SectionHeading
             center
@@ -599,47 +731,92 @@ export default async function WhyExhibitPage() {
             description="Simple preparation and consistent follow-up can help exhibitors manage their time and enquiries more effectively."
           />
 
-          <div className="mt-11 grid gap-5 md:grid-cols-3">
-            {preparation.map((step, index) => (
-              <AboutReveal
-                key={step.number}
-                delay={index * 0.07}
-                className="h-full"
-              >
-                <article className="flex h-full flex-col rounded-[22px] border border-[#DFE8E1] bg-[#F7FAF7] p-7 sm:p-8">
-                  <div className="flex items-center justify-between">
-                    <span className="text-[11px] font-extrabold uppercase tracking-[0.15em] text-[#16893F]">
-                      {step.phase} the Show
-                    </span>
+          <div className="relative mt-12">
+            {/* connecting line (desktop) */}
+            <div
+              aria-hidden="true"
+              className="absolute left-[16%] right-[16%] top-[34px] hidden h-px bg-gradient-to-r from-transparent via-[#23A455]/40 to-transparent md:block"
+            />
 
-                  
-                  </div>
+            <div className="grid gap-5 md:grid-cols-3">
+              {preparation.map((step, index) => (
+                <AboutReveal
+                  key={step.title}
+                  delay={index * 0.09}
+                  className="h-full"
+                >
+                  <article
+                    className="
+                      group relative flex h-full flex-col overflow-hidden
+                      rounded-[24px] border border-[#DFE8E1]
+                      bg-[#F7FAF7] p-7
+                      transition-all duration-500
+                      hover:-translate-y-1.5
+                      hover:border-[#23A455]/50
+                      hover:bg-white
+                      hover:shadow-[0_30px_60px_-40px_rgba(9,27,19,.45)]
+                      sm:p-8
+                    "
+                  >
+                    <div className="flex items-center gap-3">
+                      <span className="relative flex size-4 items-center justify-center">
+                        <span
+                          aria-hidden="true"
+                          className="iiev-dot absolute size-4 rounded-full bg-[#23A455]/30"
+                        />
+                        <span className="relative size-2.5 rounded-full bg-[#23A455]" />
+                      </span>
 
-                  <h3 className="mt-9 text-xl font-extrabold text-[#102A1E]">
-                    {step.title}
-                  </h3>
+                      <span className="text-[11px] font-extrabold uppercase tracking-[0.15em] text-[#16893F]">
+                        {step.phase} the Show
+                      </span>
+                    </div>
 
-                  <p className="mt-4 text-[13px] leading-7 text-[#4A5750]">
-                    {step.description}
-                  </p>
-                </article>
-              </AboutReveal>
-            ))}
+                    <h3 className="mt-10 text-xl font-extrabold tracking-[-0.03em] text-[#102A1E]">
+                      {step.title}
+                    </h3>
+
+                    <p className="mt-4 text-[13px] leading-7 text-[#4A5750]">
+                      {step.description}
+                    </p>
+                  </article>
+                </AboutReveal>
+              ))}
+            </div>
           </div>
-
-        
         </div>
       </section>
 
-     
+      {/* =====================================
+          FINAL CTA
+      ===================================== */}
+      <section className="relative isolate overflow-hidden bg-[#091B13] py-20 text-white sm:py-28">
+        {/* background image */}
+        <Image
+          src="/media/2026/expo-two-wheeler-crowd.webp"
+          alt=""
+          fill
+          sizes="100vw"
+          aria-hidden="true"
+          className="-z-20 object-cover opacity-[0.14]"
+        />
+        <div
+          aria-hidden="true"
+          className="absolute inset-0 -z-10 bg-gradient-to-b from-[#091B13] via-[#091B13]/80 to-[#091B13]"
+        />
 
-      {/* FINAL CTA */}
-      <section className="relative isolate overflow-hidden bg-[#091B13] py-16 text-white sm:py-22">
+        {/* glow */}
+        <div
+          aria-hidden="true"
+          className="iiev-glow pointer-events-none absolute left-1/2 top-1/2 -z-10 h-[420px] w-[720px] -translate-x-1/2 -translate-y-1/2 rounded-full bg-[radial-gradient(closest-side,rgba(35,164,85,.3),transparent)]"
+        />
+
+        {/* rotating rings */}
         <svg
           viewBox="0 0 500 500"
           fill="none"
           aria-hidden="true"
-          className="pointer-events-none absolute -right-36 -top-48 size-[500px] opacity-20"
+          className="iiev-spin pointer-events-none absolute -right-36 -top-48 -z-10 size-[500px] opacity-30"
         >
           <circle cx="250" cy="250" r="210" stroke="#23A455" />
           <circle cx="250" cy="250" r="145" stroke="#23A455" />
@@ -650,6 +827,23 @@ export default async function WhyExhibitPage() {
             stroke="#23A455"
             strokeDasharray="6 12"
           />
+          <circle cx="250" cy="40" r="5" fill="#23A455" />
+        </svg>
+
+        <svg
+          viewBox="0 0 500 500"
+          fill="none"
+          aria-hidden="true"
+          className="iiev-spin-rev pointer-events-none absolute -bottom-52 -left-40 -z-10 size-[500px] opacity-20"
+        >
+          <circle cx="250" cy="250" r="210" stroke="#23A455" />
+          <circle
+            cx="250"
+            cy="250"
+            r="145"
+            stroke="#23A455"
+            strokeDasharray="6 12"
+          />
         </svg>
 
         <AboutReveal className="relative mx-auto max-w-4xl px-5 text-center sm:px-8">
@@ -657,33 +851,31 @@ export default async function WhyExhibitPage() {
             <Eyebrow light>Exhibit at IIEV 2027</Eyebrow>
           </div>
 
-          <h2 className="mt-5 text-[clamp(2rem,4.5vw,3.9rem)] font-extrabold leading-[1.12] tracking-[-0.05em]">
+          <h2 className="mt-6 text-[clamp(2.1rem,4.7vw,4.2rem)] font-extrabold leading-[1.12] tracking-[-0.055em]">
             Ready to discuss
             <span className="text-[#23A455]">
               {" "}exhibition space?
             </span>
           </h2>
 
-          <p className="mx-auto mt-5 max-w-xl text-sm leading-8 text-white/70">
+          <p className="mx-auto mt-6 max-w-xl text-sm leading-8 text-white/70 sm:text-base">
             Tell the team what you would like to exhibit
             and your approximate space requirement.
           </p>
 
-          <div className="mt-9 flex flex-wrap justify-center gap-3">
-            <Link
-              href="/exhibit/book-a-stall/"
-              className="group inline-flex min-h-12 items-center justify-center gap-2 rounded-full bg-[#23A455] px-7 text-[13px] font-extrabold text-white transition-all duration-300 hover:-translate-y-0.5 hover:bg-[#16893F]"
-            >
-              Book Your Stall
-              <ArrowUpRight size={17} aria-hidden="true" />
-            </Link>
+          <div className="mt-10 flex flex-wrap items-center justify-center gap-3">
+            <BookStallButton large />
 
             <Link
               href="/exhibit/exhibitor-profile/"
-              className="group inline-flex min-h-12 items-center justify-center gap-2 rounded-full border border-white/30 px-7 text-[13px] font-bold text-white transition-colors duration-300 hover:bg-white/10"
+              className="group inline-flex min-h-14 items-center justify-center gap-2 rounded-full border border-white/30 px-8 text-[14px] font-bold text-white transition-all duration-300 hover:border-[#23A455] hover:bg-white/10"
             >
               View Exhibitor Profile
-              <ArrowRight size={17} aria-hidden="true" />
+              <ArrowRight
+                size={17}
+                aria-hidden="true"
+                className="transition-transform duration-300 group-hover:translate-x-1"
+              />
             </Link>
           </div>
         </AboutReveal>

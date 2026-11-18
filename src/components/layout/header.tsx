@@ -1,4 +1,3 @@
-
 "use client";
 
 import Image from "next/image";
@@ -16,6 +15,8 @@ import {
   AnimatePresence,
   motion,
   useReducedMotion,
+  useScroll,
+  useSpring,
 } from "framer-motion";
 import {
   ArrowUpRight,
@@ -31,9 +32,12 @@ const EASE = [0.22, 1, 0.36, 1] as const;
 const REGISTER_URL = "/visit/register/";
 const EXHIBIT_URL = "/exhibit/book-a-stall/";
 
+/* ---------- path helpers ---------- */
+
 function normalizePath(path: string) {
-  if (path === "/") return "/";
-  return path.replace(/\/+$/, "");
+  const clean = path.split("#")[0].split("?")[0];
+  if (clean === "/") return "/";
+  return clean.replace(/\/+$/, "");
 }
 
 function matchesPath(pathname: string, href: string) {
@@ -57,6 +61,8 @@ function isActive(pathname: string, item: NavItem) {
   );
 }
 
+/* ---------- desktop item ---------- */
+
 function DesktopItem({
   item,
   pathname,
@@ -66,11 +72,46 @@ function DesktopItem({
 }) {
   const [open, setOpen] = useState(false);
   const itemRef = useRef<HTMLLIElement>(null);
+  const closeTimer = useRef<ReturnType<
+    typeof setTimeout
+  > | null>(null);
+  const openedByHover = useRef(false);
+
   const menuId = useId();
   const reduceMotion = useReducedMotion();
 
   const hasChildren = Boolean(item.children?.length);
   const active = isActive(pathname, item);
+
+  const clearTimer = () => {
+    if (closeTimer.current) {
+      clearTimeout(closeTimer.current);
+      closeTimer.current = null;
+    }
+  };
+
+  const openMenu = (byHover: boolean) => {
+    clearTimer();
+    openedByHover.current = byHover;
+    setOpen(true);
+  };
+
+  const scheduleClose = () => {
+    clearTimer();
+    closeTimer.current = setTimeout(() => {
+      openedByHover.current = false;
+      setOpen(false);
+    }, 140);
+  };
+
+  // Close when the route changes.
+  useEffect(() => {
+    clearTimer();
+    setOpen(false);
+  }, [pathname]);
+
+  // Clean up the timer on unmount.
+  useEffect(() => clearTimer, []);
 
   useEffect(() => {
     if (!open) return;
@@ -97,26 +138,47 @@ function DesktopItem({
     document.addEventListener("keydown", handleKey);
 
     return () => {
-      document.removeEventListener("pointerdown", handlePointer);
+      document.removeEventListener(
+        "pointerdown",
+        handlePointer
+      );
       document.removeEventListener("keydown", handleKey);
     };
   }, [open]);
 
   const baseClass = `
     group relative inline-flex h-11 items-center
-    gap-1.5 rounded-lg px-3.5
-    text-[12px] font-bold
+    gap-1.5 rounded-xl px-3.5
+    text-[13px] font-bold
     tracking-[-0.01em]
     transition-colors duration-200
+    hover:bg-[#F1F8F3]
     focus-visible:outline-2
     focus-visible:outline-offset-2
     focus-visible:outline-[#23A455]
     ${
       active || open
-        ? "text-[#23A455]"
-        : "text-[#20352A] hover:text-[#23A455]"
+        ? "text-[#16893F]"
+        : "text-[#20352A] hover:text-[#16893F]"
     }
   `;
+
+  const underline = (visible: boolean) => (
+    <span
+      aria-hidden="true"
+      className={`
+        absolute bottom-1 left-3.5 right-3.5
+        h-[2px] origin-left rounded-full
+        bg-gradient-to-r from-[#23A455] to-[#7BD69A]
+        transition-transform duration-300
+        ${
+          visible
+            ? "scale-x-100"
+            : "scale-x-0 group-hover:scale-x-100"
+        }
+      `}
+    />
+  );
 
   if (!hasChildren) {
     return (
@@ -131,20 +193,7 @@ function DesktopItem({
           }
         >
           {item.label}
-
-          <span
-            aria-hidden="true"
-            className={`
-              absolute bottom-1.5 left-3.5 right-3.5
-              h-[2px] origin-left rounded-full bg-[#23A455]
-              transition-transform duration-300
-              ${
-                active
-                  ? "scale-x-100"
-                  : "scale-x-0 group-hover:scale-x-100"
-              }
-            `}
-          />
+          {underline(active)}
         </Link>
       </li>
     );
@@ -154,10 +203,18 @@ function DesktopItem({
     <li
       ref={itemRef}
       className="relative"
-      onMouseEnter={() => setOpen(true)}
-      onMouseLeave={() => setOpen(false)}
+      onPointerEnter={(event) => {
+        if (event.pointerType === "mouse") openMenu(true);
+      }}
+      onPointerLeave={(event) => {
+        if (event.pointerType === "mouse") scheduleClose();
+      }}
       onBlur={(event) => {
-        if (!event.currentTarget.contains(event.relatedTarget)) {
+        if (
+          !event.currentTarget.contains(
+            event.relatedTarget as Node | null
+          )
+        ) {
           setOpen(false);
         }
       }}
@@ -168,42 +225,52 @@ function DesktopItem({
         aria-expanded={open}
         aria-haspopup="true"
         aria-controls={menuId}
-        onClick={() => setOpen((previous) => !previous)}
+        onClick={() => {
+          // If hover already opened the menu, a click keeps it open
+          // instead of closing it right away.
+          if (openedByHover.current) {
+            openedByHover.current = false;
+            return;
+          }
+          setOpen((previous) => !previous);
+        }}
+        onKeyDown={(event) => {
+          if (event.key === "ArrowDown") {
+            event.preventDefault();
+            openMenu(false);
+            window.setTimeout(() => {
+              itemRef.current
+                ?.querySelector<HTMLAnchorElement>(
+                  "[data-dropdown] a"
+                )
+                ?.focus();
+            }, 40);
+          }
+        }}
       >
         {item.label}
 
         <ChevronDown
           size={15}
           strokeWidth={2}
-          className={`
-            transition-transform duration-300
-            ${open ? "rotate-180" : ""}
-          `}
+          aria-hidden="true"
+          className={`transition-transform duration-300 ${
+            open ? "rotate-180" : ""
+          }`}
         />
 
-        <span
-          aria-hidden="true"
-          className={`
-            absolute bottom-1.5 left-3.5 right-3.5
-            h-[2px] origin-left rounded-full bg-[#23A455]
-            transition-transform duration-300
-            ${
-              active || open
-                ? "scale-x-100"
-                : "scale-x-0 group-hover:scale-x-100"
-            }
-          `}
-        />
+        {underline(active || open)}
       </button>
 
       <AnimatePresence>
         {open && (
           <motion.div
             id={menuId}
+            data-dropdown
             initial={
               reduceMotion
                 ? false
-                : { opacity: 0, y: 9, scale: 0.98 }
+                : { opacity: 0, y: 10, scale: 0.98 }
             }
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={
@@ -217,26 +284,32 @@ function DesktopItem({
             }}
             className="
               absolute left-1/2 top-full z-50
-              w-[340px] -translate-x-1/2 pt-3
+              w-[350px] -translate-x-1/2 pt-3
             "
           >
             <div
               className="
-                overflow-hidden rounded-2xl
+                relative overflow-hidden rounded-2xl
                 border border-white/10
                 bg-[#102A1E]
                 p-2.5 text-white
-                shadow-[0_24px_60px_-16px_rgba(0,0,0,0.35)]
+                shadow-[0_30px_70px_-20px_rgba(0,0,0,0.45)]
               "
             >
-              <div className="px-3.5 pb-3 pt-3">
+              {/* decorative glow */}
+              <span
+                aria-hidden="true"
+                className="pointer-events-none absolute -right-16 -top-20 size-48 rounded-full bg-[radial-gradient(closest-side,rgba(35,164,85,.28),transparent)]"
+              />
+
+              <div className="relative px-3.5 pb-3 pt-3">
                 <p className="text-[10px] font-extrabold uppercase tracking-[0.16em] text-[#71D49A]">
                   {item.label}
                 </p>
                 <div className="mt-3 h-px bg-white/10" />
               </div>
 
-              <ul className="space-y-1">
+              <ul className="relative space-y-1">
                 {item.children?.map((child) => {
                   const selected = matchesPath(
                     pathname,
@@ -266,7 +339,13 @@ function DesktopItem({
                         `}
                       >
                         <div className="min-w-0">
-                          <span className="block text-[13px] font-bold text-white">
+                          <span className="flex items-center gap-2 text-[13px] font-bold text-white">
+                            {selected && (
+                              <span
+                                aria-hidden="true"
+                                className="size-1.5 rounded-full bg-[#23A455]"
+                              />
+                            )}
                             {child.label}
                           </span>
 
@@ -281,11 +360,10 @@ function DesktopItem({
                           size={16}
                           aria-hidden="true"
                           className="
-                            mt-0.5 shrink-0
-                            text-[#71D49A]
+                            mt-0.5 shrink-0 text-[#71D49A]
                             transition-transform duration-200
-                            group-hover/link:translate-x-0.5
                             group-hover/link:-translate-y-0.5
+                            group-hover/link:translate-x-0.5
                           "
                         />
                       </Link>
@@ -301,14 +379,18 @@ function DesktopItem({
   );
 }
 
+/* ---------- mobile drawer ---------- */
+
 function MobileMenu({
   open,
   onClose,
   pathname,
+  editionLine,
 }: {
   open: boolean;
   onClose: () => void;
   pathname: string;
+  editionLine: string;
 }) {
   const [mounted, setMounted] = useState(false);
   const [expanded, setExpanded] = useState<string | null>(
@@ -321,6 +403,18 @@ function MobileMenu({
   useEffect(() => {
     setMounted(true);
   }, []);
+
+  // Open the section of the current page by default.
+  useEffect(() => {
+    if (!open) return;
+
+    const current = mainNav.find(
+      (item) =>
+        item.children?.length && isActive(pathname, item)
+    );
+
+    setExpanded(current?.href ?? null);
+  }, [open, pathname]);
 
   useEffect(() => {
     if (!open) return;
@@ -381,12 +475,20 @@ function MobileMenu({
     };
   }, [open, onClose]);
 
-  const handleNavigation = () => {
-    onClose();
-    setExpanded(null);
-  };
-
   if (!mounted) return null;
+
+  const itemMotion = (index: number) =>
+    reduceMotion
+      ? {}
+      : {
+          initial: { opacity: 0, x: 16 },
+          animate: { opacity: 1, x: 0 },
+          transition: {
+            delay: 0.08 + index * 0.04,
+            duration: 0.35,
+            ease: EASE,
+          },
+        };
 
   return createPortal(
     <AnimatePresence>
@@ -412,9 +514,7 @@ function MobileMenu({
             role="dialog"
             aria-modal="true"
             aria-label="Main navigation"
-            initial={
-              reduceMotion ? false : { x: "100%" }
-            }
+            initial={reduceMotion ? false : { x: "100%" }}
             animate={{ x: 0 }}
             exit={reduceMotion ? {} : { x: "100%" }}
             transition={
@@ -436,15 +536,23 @@ function MobileMenu({
               shadow-[-20px_0_60px_rgba(0,0,0,0.25)]
             "
           >
-            {/* Mobile header */}
-            <div className="flex h-[76px] shrink-0 items-center justify-between border-b border-white/10 px-5">
-              <div>
+            {/* drawer glow */}
+            <span
+              aria-hidden="true"
+              className="pointer-events-none absolute -right-24 -top-24 size-72 rounded-full bg-[radial-gradient(closest-side,rgba(35,164,85,.25),transparent)]"
+            />
+
+            {/* Header */}
+            <div className="relative flex h-[76px] shrink-0 items-center justify-between border-b border-white/10 px-5">
+              <div className="min-w-0 pr-3">
                 <p className="text-[11px] font-extrabold uppercase tracking-[0.17em] text-white">
-                  Navigation
-                </p>
-                <p className="mt-1 text-[10px] text-white/45">
                   India International EV Show
                 </p>
+                {editionLine && (
+                  <p className="mt-1 truncate text-[10px] text-[#71D49A]">
+                    {editionLine}
+                  </p>
+                )}
               </div>
 
               <button
@@ -452,7 +560,7 @@ function MobileMenu({
                 onClick={onClose}
                 aria-label="Close navigation"
                 className="
-                  flex size-11 items-center
+                  flex size-11 shrink-0 items-center
                   justify-center rounded-full
                   border border-white/15
                   text-white transition-colors
@@ -462,20 +570,20 @@ function MobileMenu({
                   focus-visible:outline-[#23A455]
                 "
               >
-                <X size={20} strokeWidth={1.8} />
+                <X size={20} strokeWidth={1.8} aria-hidden="true" />
               </button>
             </div>
 
-            {/* Mobile links */}
+            {/* Links */}
             <nav
-              className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-4 py-5"
+              className="relative min-h-0 flex-1 overflow-y-auto overscroll-contain px-4 py-5"
               aria-label="Mobile navigation"
             >
               <ul className="space-y-1">
-                <li>
+                <motion.li {...itemMotion(0)}>
                   <Link
                     href="/"
-                    onClick={handleNavigation}
+                    onClick={onClose}
                     aria-current={
                       pathname === "/" ? "page" : undefined
                     }
@@ -492,18 +600,20 @@ function MobileMenu({
                   >
                     Home
                   </Link>
-                </li>
+                </motion.li>
 
-                {mainNav.map((item) => {
+                {mainNav.map((item, index) => {
                   const hasChildren = Boolean(
                     item.children?.length
                   );
                   const active = isActive(pathname, item);
-                  const isExpanded =
-                    expanded === item.href;
+                  const isExpanded = expanded === item.href;
 
                   return (
-                    <li key={item.href}>
+                    <motion.li
+                      key={item.href}
+                      {...itemMotion(index + 1)}
+                    >
                       {hasChildren ? (
                         <>
                           <button
@@ -524,7 +634,7 @@ function MobileMenu({
                               transition-colors
                               hover:bg-white/[0.06]
                               ${
-                                active
+                                active || isExpanded
                                   ? "text-[#71D49A]"
                                   : "text-white/85"
                               }
@@ -534,14 +644,10 @@ function MobileMenu({
 
                             <ChevronDown
                               size={18}
-                              className={`
-                                transition-transform duration-300
-                                ${
-                                  isExpanded
-                                    ? "rotate-180"
-                                    : ""
-                                }
-                              `}
+                              aria-hidden="true"
+                              className={`transition-transform duration-300 ${
+                                isExpanded ? "rotate-180" : ""
+                              }`}
                             />
                           </button>
 
@@ -571,34 +677,54 @@ function MobileMenu({
                                 <li className="ml-4 border-l border-[#23A455]/40 py-2 pl-3">
                                   <ul className="space-y-1">
                                     {item.children?.map(
-                                      (child) => (
-                                        <li key={child.href}>
-                                          <Link
-                                            href={child.href}
-                                            onClick={
-                                              handleNavigation
-                                            }
-                                            className={`
-                                              block rounded-lg
-                                              px-3 py-3
-                                              text-[13px]
-                                              leading-5
-                                              transition-colors
-                                              hover:bg-white/[0.06]
-                                              ${
-                                                matchesPath(
-                                                  pathname,
-                                                  child.href
-                                                )
-                                                  ? "font-bold text-[#71D49A]"
-                                                  : "text-white/65 hover:text-white"
+                                      (child) => {
+                                        const selected =
+                                          matchesPath(
+                                            pathname,
+                                            child.href
+                                          );
+
+                                        return (
+                                          <li key={child.href}>
+                                            <Link
+                                              href={child.href}
+                                              onClick={onClose}
+                                              aria-current={
+                                                selected
+                                                  ? "page"
+                                                  : undefined
                                               }
-                                            `}
-                                          >
-                                            {child.label}
-                                          </Link>
-                                        </li>
-                                      )
+                                              className={`
+                                                block rounded-lg
+                                                px-3 py-2.5
+                                                transition-colors
+                                                hover:bg-white/[0.06]
+                                                ${
+                                                  selected
+                                                    ? "bg-white/[0.05]"
+                                                    : ""
+                                                }
+                                              `}
+                                            >
+                                              <span
+                                                className={`block text-[13px] leading-5 ${
+                                                  selected
+                                                    ? "font-bold text-[#71D49A]"
+                                                    : "font-semibold text-white/80"
+                                                }`}
+                                              >
+                                                {child.label}
+                                              </span>
+
+                                              {child.description && (
+                                                <span className="mt-0.5 block text-[11px] leading-5 text-white/45">
+                                                  {child.description}
+                                                </span>
+                                              )}
+                                            </Link>
+                                          </li>
+                                        );
+                                      }
                                     )}
                                   </ul>
                                 </li>
@@ -609,12 +735,9 @@ function MobileMenu({
                       ) : (
                         <Link
                           href={item.href}
-                          onClick={handleNavigation}
+                          onClick={onClose}
                           aria-current={
-                            matchesPath(
-                              pathname,
-                              item.href
-                            )
+                            matchesPath(pathname, item.href)
                               ? "page"
                               : undefined
                           }
@@ -633,20 +756,20 @@ function MobileMenu({
                           {item.label}
                         </Link>
                       )}
-                    </li>
+                    </motion.li>
                   );
                 })}
               </ul>
             </nav>
 
-            {/* Mobile CTAs */}
-            <div className="shrink-0 border-t border-white/10 bg-[#0A1E13] p-5 pb-[max(1.25rem,env(safe-area-inset-bottom))]">
+            {/* CTAs */}
+            <div className="relative shrink-0 border-t border-white/10 bg-[#0A1E13] p-5 pb-[max(1.25rem,env(safe-area-inset-bottom))]">
               <div className="grid gap-3">
                 <Link
                   href={EXHIBIT_URL}
-                  onClick={handleNavigation}
+                  onClick={onClose}
                   className="
-                    flex min-h-12 items-center
+                    group flex min-h-12 items-center
                     justify-center gap-2 rounded-xl
                     bg-[#23A455] px-5 py-3
                     text-[13px] font-extrabold
@@ -655,12 +778,16 @@ function MobileMenu({
                   "
                 >
                   Book Your Stall
-                  <ArrowUpRight size={17} />
+                  <ArrowUpRight
+                    size={17}
+                    aria-hidden="true"
+                    className="transition-transform duration-300 group-hover:-translate-y-0.5 group-hover:translate-x-0.5"
+                  />
                 </Link>
 
                 <Link
                   href={REGISTER_URL}
-                  onClick={handleNavigation}
+                  onClick={onClose}
                   className="
                     flex min-h-12 items-center
                     justify-center gap-2 rounded-xl
@@ -684,6 +811,8 @@ function MobileMenu({
   );
 }
 
+/* ---------- header ---------- */
+
 export function SiteHeader({
   editionLine,
 }: {
@@ -692,6 +821,14 @@ export function SiteHeader({
   const pathname = usePathname() || "/";
   const [mobileOpen, setMobileOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
+  const reduceMotion = useReducedMotion();
+
+  const { scrollYProgress } = useScroll();
+  const smoothProgress = useSpring(scrollYProgress, {
+    stiffness: 130,
+    damping: 32,
+    restDelta: 0.001,
+  });
 
   const closeMobile = useCallback(() => {
     setMobileOpen(false);
@@ -723,35 +860,35 @@ export function SiteHeader({
         className={`
           sticky top-0 z-50
           border-b border-[#102A1E]/[0.08]
-          bg-white/95
-          backdrop-blur-xl
+          bg-white/95 backdrop-blur-xl
           transition-[box-shadow,background-color]
           duration-300
           supports-[backdrop-filter]:bg-white/90
           ${
             scrolled
-              ? "shadow-[0_8px_30px_-18px_rgba(9,27,19,0.22)]"
+              ? "shadow-[0_10px_34px_-18px_rgba(9,27,19,0.28)]"
               : "shadow-none"
           }
         `}
       >
         <div
-          className="
-            mx-auto flex h-[70px]
-            max-w-[1440px] items-center
-            justify-between gap-4
-            px-4 sm:px-6
-            lg:h-[78px] lg:px-8
-            2xl:px-10
-          "
+          className={`
+            mx-auto flex max-w-[1440px] items-center
+            justify-between gap-4 px-4 sm:px-6 lg:px-8 2xl:px-10
+            transition-[height] duration-300 ease-out
+            ${
+              scrolled
+                ? "h-[62px] lg:h-[66px]"
+                : "h-[70px] lg:h-[78px]"
+            }
+          `}
         >
-          {/* Official brand logo */}
+          {/* Logo */}
           <Link
             href="/"
             aria-label="India International EV Show homepage"
             className="
-              relative flex shrink-0 items-center
-              rounded-lg
+              relative flex shrink-0 items-center rounded-lg
               focus-visible:outline-2
               focus-visible:outline-offset-4
               focus-visible:outline-[#23A455]
@@ -764,12 +901,15 @@ export function SiteHeader({
               height={734}
               priority
               sizes="(max-width:640px) 130px, 155px"
-              className="
-                h-[46px] w-auto
-                object-contain
-                sm:h-[52px]
-                lg:h-[57px]
-              "
+              className={`
+                w-auto object-contain
+                transition-[height] duration-300 ease-out
+                ${
+                  scrolled
+                    ? "h-[40px] sm:h-[44px] lg:h-[48px]"
+                    : "h-[46px] sm:h-[52px] lg:h-[57px]"
+                }
+              `}
             />
 
             <span className="sr-only">{editionLine}</span>
@@ -791,7 +931,7 @@ export function SiteHeader({
             </ul>
           </nav>
 
-          {/* Desktop CTAs */}
+          {/* CTAs */}
           <div className="flex shrink-0 items-center gap-2.5">
             <Link
               href={REGISTER_URL}
@@ -829,7 +969,7 @@ export function SiteHeader({
                 transition-all duration-300
                 hover:-translate-y-0.5
                 hover:bg-[#1C8846]
-                hover:shadow-[0_12px_26px_-12px_rgba(35,164,85,0.7)]
+                hover:shadow-[0_14px_28px_-12px_rgba(35,164,85,0.75)]
                 focus-visible:outline-2
                 focus-visible:outline-offset-2
                 focus-visible:outline-[#23A455]
@@ -840,10 +980,11 @@ export function SiteHeader({
 
               <ArrowUpRight
                 size={16}
+                aria-hidden="true"
                 className="
                   transition-transform duration-300
-                  group-hover:translate-x-0.5
                   group-hover:-translate-y-0.5
+                  group-hover:translate-x-0.5
                 "
               />
             </Link>
@@ -858,8 +999,7 @@ export function SiteHeader({
               className="
                 inline-flex size-11
                 items-center justify-center
-                rounded-full border
-                border-[#D5E1D8]
+                rounded-full border border-[#D5E1D8]
                 text-[#102A1E]
                 transition-colors duration-200
                 hover:border-[#23A455]
@@ -871,24 +1011,24 @@ export function SiteHeader({
                 xl:hidden
               "
             >
-              <Menu size={21} strokeWidth={1.8} />
+              <Menu size={21} strokeWidth={1.8} aria-hidden="true" />
             </button>
           </div>
         </div>
 
-        {/* Very subtle bottom brand line */}
-        <div
+        {/* Scroll progress line */}
+        <motion.div
           aria-hidden="true"
-          className={`
-            absolute bottom-0 left-0 h-[2px]
-            bg-[#23A455]
-            transition-[width,opacity] duration-500
-            ${
-              scrolled
-                ? "w-full opacity-100"
-                : "w-0 opacity-0"
-            }
-          `}
+          style={{
+            scaleX: reduceMotion
+              ? scrollYProgress
+              : smoothProgress,
+          }}
+          className="
+            absolute bottom-0 left-0 h-[2px] w-full
+            origin-left
+            bg-gradient-to-r from-[#23A455] to-[#7BD69A]
+          "
         />
       </header>
 
@@ -896,6 +1036,7 @@ export function SiteHeader({
         open={mobileOpen}
         onClose={closeMobile}
         pathname={pathname}
+        editionLine={editionLine}
       />
     </>
   );

@@ -91,7 +91,7 @@ export default async function ContactPage() {
 
             <p className="mx-auto mt-6 max-w-2xl text-[14px] leading-8 text-[#526357] sm:text-base">
               Have a question about participating in
-              India International EV Show? Send your
+              9th India International EV Show? Send your
               enquiry through the form below or contact
               the relevant team member using the
               published contact details.

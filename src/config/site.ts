@@ -31,7 +31,7 @@ export const defaultEdition = {
   startDate: "2027-11-11",
   endDate: "2027-11-13",
   dateLabel: "11–13 November 2027",
-  openingHours: null as string | null, // unknown — CMS
+  openingHours: "10:00 AM to 6:00 PM", // unknown — CMS
   venue: {
     name: "Auto Cluster Exhibition Centre",
     locality: "Pimpri-Chinchwad",
@@ -67,7 +67,7 @@ export const defaultEdition = {
   concurrentShows: [
     {
       key: "battery",
-      name: "India International Battery Show",
+      name: "2nd India International Battery Show",
       editionLabel: "2nd Edition", // per supplied logo artwork
       strap: "Production • Processing • Products",
       logo: "/brand/concurrent/india-international-battery-show-trimmed.png",
@@ -75,7 +75,7 @@ export const defaultEdition = {
     },
     {
       key: "solar",
-      name: "India International Solar Show",
+      name: "2nd India International Solar Show",
       editionLabel: "2nd Edition",
       strap: "Connecting Solar Industry",
       logo: "/brand/concurrent/india-international-solar-show-trimmed.png",
@@ -109,10 +109,7 @@ export const mainNav: NavItem[] = [
     href: "/about/",
     children: [
       { label: "About the Show", href: "/about/", description: "Purpose, audience and organiser" },
-        {
-  label: "Organiser",
-  href: "/organiser/",
-},
+     { label: "Organiser", href: "/organiser/", description: "Futurex Trade Fair and Events" },
       { label: "Why IIEV Show", href: "/why-iiev/", description: "What makes the platform useful" },
       { label: "Past Editions", href: "/past-editions/", description: "Verified history since 2022" },
       { label: "Concurrent Events", href: "/concurrent-events/", description: "Battery and Solar shows" },
@@ -162,10 +159,10 @@ export const mainNav: NavItem[] = [
     children: [
       // { label: "News", href: "/news/" },
       // { label: "Insights", href: "/insights/" },
-      { label: "Gallery", href: "/gallery/" },
-      { label: "Videos", href: "/videos/" },
-      { label: "Brochure", href: "/downloads/" },
-      { label: "Post Show Report", href: "/downloads/8th_India_International_EV_Show_2026_Post_Show_Report.pdf"},
+ { label: "Photos & Videos", href: "/gallery/", description: "Event photographs and films" },
+{ label: "Brochure", href: "/downloads/" },
+{ label: "Post Show Report", href: "/downloads/8th_India_International_EV_Show_2026_Post_Show_Report.pdf" },
+
     ],
   },
   { label: "Contact", href: "/contact/" },
@@ -241,18 +238,8 @@ export const footerNav: {
   {
     title: "Media",
     links: [
-      {
-        label: "Photo Gallery",
-        href: "/gallery/",
-      },
-      {
-        label: "Videos",
-        href: "/videos/",
-      },
-      {
-        label: "Downloads",
-        href: "/downloads/",
-      },
+   { label: "Photos & Videos", href: "/gallery/" },
+{ label: "Downloads", href: "/downloads/" },
     ],
   },
 ];

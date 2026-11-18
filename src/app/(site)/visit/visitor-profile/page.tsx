@@ -273,9 +273,7 @@ export default function VisitorProfilePage() {
                         />
                       </div>
 
-                      <span className="text-xs font-extrabold text-[#93A598]">
-                        {group.number} / 06
-                      </span>
+                   
                     </div>
 
                     <h3 className="mt-7 text-xl font-extrabold tracking-tight text-[#102A1E]">
@@ -345,11 +343,7 @@ export default function VisitorProfilePage() {
             </div>
           </AboutReveal>
 
-          <p className="mx-auto mt-8 max-w-2xl text-center text-xs leading-6 text-[#718074]">
-            Visitor profiles are intended audience
-            categories, not confirmed attendance figures
-            or a list of registered visitors for 2027.
-          </p>
+        
         </div>
       </section>
 

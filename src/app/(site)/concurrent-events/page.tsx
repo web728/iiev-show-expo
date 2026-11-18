@@ -1,4 +1,3 @@
-
 import type { Metadata } from "next";
 import Image from "next/image";
 import Link from "next/link";
@@ -10,9 +9,7 @@ import {
   CalendarDays,
   CheckCircle2,
   Clock3,
-  Factory,
   MapPin,
-  PlugZap,
   Sun,
 } from "lucide-react";
 
@@ -43,6 +40,8 @@ const showContent = {
       "Manufacturing & recycling",
     ],
     Icon: BatteryCharging,
+    url: "https://www.indiabatteryshow.com/",
+    host: "indiabatteryshow.com",
   },
 
   solar: {
@@ -57,6 +56,8 @@ const showContent = {
       "Energy storage integration",
     ],
     Icon: Sun,
+    url: "https://www.indiasolarshow.com/",
+    host: "indiasolarshow.com",
   },
 } as const;
 
@@ -89,7 +90,6 @@ export default async function ConcurrentEventsPage() {
   const edition = await getCurrentEdition();
 
   const shows = edition.concurrentShows ?? [];
-  const anyUnconfirmed = shows.some((show) => !show.approved);
 
   const venue = [
     edition.venue.name,
@@ -145,38 +145,6 @@ export default async function ConcurrentEventsPage() {
               into the same exhibition environment.
             </p>
           </AboutReveal>
-
-          {/* Status information */}
-          {anyUnconfirmed && (
-            <AboutReveal
-              delay={0.1}
-              className="mx-auto mt-10 max-w-4xl"
-            >
-              <div className="flex items-start gap-4 rounded-2xl border border-[#DDE7DF] bg-[#F5F9F5] p-5 sm:p-6">
-                <Clock3
-                  size={21}
-                  strokeWidth={1.8}
-                  className="mt-0.5 shrink-0 text-[#16893F]"
-                  aria-hidden="true"
-                />
-
-                <div>
-                  <h3 className="text-[13px] font-extrabold text-[#102A1E]">
-                    {edition.year} Event Confirmation
-                  </h3>
-
-                  <p className="mt-2 text-[12px] leading-6 text-[#4A5750] sm:text-[13px]">
-                    The battery and solar exhibitions were
-                    held concurrently with IIEV in 2026.
-                    The co-location details for the{" "}
-                    {edition.year} edition are subject to
-                    organiser confirmation. Individual show
-                    statuses are provided below.
-                  </p>
-                </div>
-              </div>
-            </AboutReveal>
-          )}
         </div>
       </section>
 
@@ -260,46 +228,25 @@ export default async function ConcurrentEventsPage() {
                           />
                         </svg>
 
-                        <div className="relative z-10 flex min-h-28 w-full items-center justify-center">
+                        {/* Logo -> opens the show's website */}
+                        <a
+                          href={content.url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          aria-label={`Visit ${show.name} website (opens in a new tab)`}
+                          className="relative z-10 flex min-h-28 w-full items-center justify-center focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#23A455]"
+                        >
                           <Image
                             src={show.logo}
                             alt={`${show.name} logo`}
                             width={1540}
                             height={620}
                             sizes="(max-width:1024px) 80vw, 480px"
-                            className="max-h-[115px] w-auto max-w-full object-contain"
+                            className="max-h-[115px] w-auto max-w-full object-contain transition-transform duration-500 group-hover:scale-[1.03]"
                           />
-                        </div>
+                        </a>
 
-                        <div className="relative z-10 mt-5 flex flex-wrap items-center justify-center gap-3">
-                          <span className="rounded-full border border-[#DDE7DF] px-3 py-1 text-[10px] font-bold uppercase tracking-[0.08em] text-[#506659]">
-                            {show.editionLabel}
-                          </span>
-
-                          <span
-                            className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-[10px] font-bold ${
-                              show.approved
-                                ? "border-[#23A455]/25 bg-[#23A455]/10 text-[#16893F]"
-                                : "border-[#DFE6DF] bg-[#F3F6F3] text-[#596A5E]"
-                            }`}
-                          >
-                            {show.approved ? (
-                              <CheckCircle2
-                                size={13}
-                                aria-hidden="true"
-                              />
-                            ) : (
-                              <Clock3
-                                size={13}
-                                aria-hidden="true"
-                              />
-                            )}
-
-                            {show.approved
-                              ? `Confirmed for ${edition.year}`
-                              : `${edition.year} pending confirmation`}
-                          </span>
-                        </div>
+                      
                       </div>
 
                       {/* Show information */}
@@ -354,11 +301,26 @@ export default async function ConcurrentEventsPage() {
 
                         <div className="mt-auto pt-8">
                           <div className="h-px bg-[#E8EEE9]" />
-                          <p className="mt-5 text-[11px] leading-6 text-[#718276]">
-                            {show.approved
-                              ? `The ${edition.year} concurrent event details have been approved by the organiser.`
-                              : `The ${edition.year} co-location and edition details have not yet been confirmed.`}
-                          </p>
+
+                          <div className="mt-5 flex flex-col gap-5 sm:flex-row sm:items-center sm:justify-between">
+                            
+
+                            {/* Visit website button */}
+                            <a
+                              href={content.url}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              aria-label={`Visit ${show.name} website (opens in a new tab)`}
+                              className="group/btn inline-flex min-h-11 shrink-0 items-center justify-center gap-2 rounded-full bg-[#23A455] px-5 text-[12px] font-bold text-white transition-all duration-300 hover:-translate-y-0.5 hover:bg-[#16893F] focus-visible:outline-2 focus-visible:outline-offset-3 focus-visible:outline-[#23A455]"
+                            >
+                              Visit {content.host}
+                              <ArrowUpRight
+                                size={16}
+                                aria-hidden="true"
+                                className="transition-transform duration-300 group-hover/btn:translate-x-0.5 group-hover/btn:-translate-y-0.5"
+                              />
+                            </a>
+                          </div>
                         </div>
                       </div>
                     </article>
@@ -379,74 +341,7 @@ export default async function ConcurrentEventsPage() {
         </div>
       </section>
 
-      {/* =====================================
-          2026 EVENT CONTEXT
-      ===================================== */}
-      <section className="overflow-hidden bg-white py-18 sm:py-24">
-        <div className="mx-auto grid max-w-7xl items-center gap-12 px-5 sm:px-8 lg:grid-cols-[1.08fr_.92fr] lg:gap-18 lg:px-10">
-          <AboutReveal className="relative">
-            <div className="relative aspect-[4/3] overflow-hidden rounded-[24px] bg-[#102A1E]">
-              <Image
-                src="/media/2026/expo-crowd-hall.webp"
-                alt="Visitors at the 2026 IIEV exhibition in Pune"
-                fill
-                sizes="(max-width:1024px) 100vw, 55vw"
-                className="object-cover transition-transform duration-700 hover:scale-[1.04]"
-              />
-
-              <div
-                aria-hidden="true"
-                className="pointer-events-none absolute inset-0 bg-gradient-to-t from-[#091B13]/55 via-transparent to-transparent"
-              />
-
-              <p className="absolute bottom-5 left-5 rounded-full border border-white/20 bg-[#091B13]/70 px-4 py-2 text-[10px] font-semibold text-white backdrop-blur-md sm:text-xs">
-                IIEV · Pune 2026
-              </p>
-            </div>
-          </AboutReveal>
-
-          <AboutReveal delay={0.1}>
-            <SectionLabel>Previous Edition</SectionLabel>
-
-            <h2 className="mt-5 text-[clamp(2rem,4vw,3.5rem)] font-extrabold leading-[1.13] tracking-[-0.05em] text-[#102A1E]">
-              Connected through
-              <span className="text-[#23A455]">
-                {" "}a common exhibition platform.
-              </span>
-            </h2>
-
-            <p className="mt-6 text-sm leading-8 text-[#4A5750] sm:text-base">
-              The 8th India International EV Show was
-              held from 2–4 October 2026 at Auto Cluster
-              Exhibition Centre, Pimpri-Chinchwad, Pune.
-              It took place concurrently with the India
-              International Battery Show and India
-              International Solar Show.
-            </p>
-
-            <p className="mt-4 text-sm leading-8 text-[#4A5750] sm:text-base">
-              The format brought professionals from
-              electric mobility, battery manufacturing,
-              energy storage, renewable energy and related
-              industrial sectors into one exhibition
-              environment while retaining each show's
-              distinct identity.
-            </p>
-
-            <Link
-              href="/past-editions/2026-pune/"
-              className="group mt-7 inline-flex items-center gap-2 border-b-2 border-[#23A455] pb-2 text-[13px] font-bold text-[#16893F] transition-colors hover:text-[#102A1E]"
-            >
-              Explore IIEV 2026
-              <ArrowUpRight
-                size={17}
-                aria-hidden="true"
-                className="transition-transform duration-300 group-hover:translate-x-0.5 group-hover:-translate-y-0.5"
-              />
-            </Link>
-          </AboutReveal>
-        </div>
-      </section>
+     
 
       {/* =====================================
           2027 EVENT DETAILS
@@ -495,7 +390,7 @@ export default async function ConcurrentEventsPage() {
             </h2>
 
             <p className="mx-auto mt-6 max-w-2xl text-sm leading-8 text-white/70 sm:text-base">
-              The India International EV Show brings
+              The 9th India International EV Show brings
               together professionals across electric
               vehicles, components, charging and mobility
               technology. Explore participation

@@ -1,460 +1,485 @@
 import type { Metadata } from "next";
 import Image from "next/image";
 import Link from "next/link";
-import { ArrowRight, Download } from "lucide-react";
+import { ArrowUpRight, CalendarDays, Download, MapPin } from "lucide-react";
 import { CompactHero } from "@/components/home/compact-hero";
 import {
-  Arc,
-  Chevrons,
-  FadeUp,
-  FocusRow,
-  Lines,
-  Photo,
-  Rule,
-  Tab,
-} from "@/components/home/motion-kit";
+  Reveal,
+  LineHeading,
+  ImageReveal,
+  EditorialRow,
+  HeroEntrance,
+  DividerReveal,
+  HoverLift,
+} from "@/components/home/home-animations";
+import { IndustryAudience } from "@/components/home/industry-audience";
+import { ShowExperience } from "@/components/home/show-experience";
+import { EventEssentials } from "@/components/home/event-essentials";
+import { ParticipateSection } from "@/components/home/participate-section";
+import { ShowSectors } from "@/components/home/show-sectors";
+
+const website = (process.env.NEXT_PUBLIC_SITE_URL || "https://iievshow.com").replace(/\/+$/, "");
 
 export const metadata: Metadata = {
   title: "India International EV Show 2027 | 14–16 October, Pune",
   description:
-    "Attend the 9th India International EV Show on 14–16 October 2027 at Auto Cluster Exhibition Centre, Pimpri-Chinchwad, Pune. Explore EVs, charging, components and technology.",
+    "Join the 9th India International EV Show, 14–16 October 2027 at Auto Cluster Exhibition Centre, Pimpri-Chinchwad, Pune. Discover EVs, charging, batteries, manufacturing and mobility technology.",
   alternates: { canonical: "/" },
   openGraph: {
-    title: "India International EV Show 2027 | Pune",
-    description:
-      "Explore electric vehicles, charging infrastructure, EV components and mobility technology, 14–16 October 2027 in Pune.",
-    url: "/",
     type: "website",
+    url: "/",
+    title: "India International EV Show 2027 | Pune",
+    description: "14–16 October 2027 · Auto Cluster Exhibition Centre, Pune. Discover the electric mobility ecosystem in one place.",
   },
 };
 
 const sectors = [
-  {
-    number: "01",
-    name: "Electric vehicles",
-    desc: "Two- and three-wheelers, cars, buses, cargo vehicles and micro-mobility.",
-  },
-  {
-    number: "02",
-    name: "Powertrains & components",
-    desc: "Motors, controllers, drive systems, inverters, electronics and vehicle components.",
-  },
-  {
-    number: "03",
-    name: "Charging infrastructure",
-    desc: "AC/DC chargers, charging stations, connectors, platforms and swapping systems.",
-  },
-  {
-    number: "04",
-    name: "EV battery integration",
-    desc: "Battery packs, management systems, thermal solutions and on-board charging.",
-  },
-  {
-    number: "05",
-    name: "Smart mobility",
-    desc: "Telematics, fleet technology, connected vehicles, diagnostics and software.",
-  },
-  {
-    number: "06",
-    name: "Manufacturing & engineering",
-    desc: "Assembly equipment, automation, precision engineering, testing and design.",
-  },
+  { number: "01", name: "Electric vehicles", desc: "Two- and three-wheelers, cars, buses, cargo vehicles and micro-mobility." },
+  { number: "02", name: "Powertrains & components", desc: "Motors, controllers, drive systems, inverters, electronics and vehicle components." },
+  { number: "03", name: "Charging infrastructure", desc: "AC/DC chargers, charging stations, connectors, platforms and swapping systems." },
+  { number: "04", name: "EV battery integration", desc: "Battery packs, management systems, thermal solutions and on-board charging." },
+  { number: "05", name: "Smart mobility", desc: "Telematics, fleet technology, connected vehicles, diagnostics and software." },
+  { number: "06", name: "Manufacturing & engineering", desc: "Assembly equipment, automation, precision engineering, testing and design." },
 ];
 
-const audience = [
-  {
-    title: "Automotive & manufacturing",
-    desc: "Vehicle OEMs, component manufacturers, engineering and R&D teams.",
-  },
-  {
-    title: "Buyers & distribution",
-    desc: "Dealers, distributors, sourcing teams and channel partners.",
-  },
-  {
-    title: "Fleet & transport",
-    desc: "Fleet operators, logistics firms and commercial mobility businesses.",
-  },
-  {
-    title: "Charging & infrastructure",
-    desc: "Charge-point operators, EPC companies, utilities and integrators.",
-  },
-  {
-    title: "Government & institutions",
-    desc: "Public-sector organisations, transport authorities and institutional buyers.",
-  },
-  {
-    title: "Research & investment",
-    desc: "Investors, startups, research institutes, universities and consultants.",
-  },
+const audiences = [
+  { title: "Automotive & manufacturing", description: "Vehicle OEMs, component manufacturers, engineering and R&D teams." },
+  { title: "Buyers & distribution", description: "Dealers, distributors, sourcing teams and channel partners." },
+  { title: "Fleet & transport", description: "Fleet operators, logistics firms and commercial mobility businesses." },
+  { title: "Charging & infrastructure", description: "Charge-point operators, EPC companies, utilities and integrators." },
+  { title: "Government & institutions", description: "Public-sector organisations, transport authorities and institutional buyers." },
+  { title: "Research & investment", description: "Investors, startups, research institutes, universities and consultants." },
 ];
 
-const steps = [
-  {
-    n: "01",
-    title: "Discover",
-    text: "Explore solutions across the electric mobility value chain.",
-  },
-  {
-    n: "02",
-    title: "Evaluate",
-    text: "Compare technology and speak directly with product teams.",
-  },
-  {
-    n: "03",
-    title: "Connect",
-    text: "Meet potential buyers, suppliers and industry professionals.",
-  },
-  {
-    n: "04",
-    title: "Collaborate",
-    text: "Discuss sourcing, manufacturing and business opportunities.",
-  },
+const experience = [
+  { number: "01", title: "Discover", body: "Explore solutions across the electric mobility value chain." },
+  { number: "02", title: "Evaluate", body: "Compare technology and speak directly with product teams." },
+  { number: "03", title: "Connect", body: "Meet potential buyers, suppliers and industry professionals." },
+  { number: "04", title: "Collaborate", body: "Discuss sourcing, manufacturing and business opportunities." },
 ];
 
-const aboutFacts = [
+const facts = [
   { label: "Edition", value: "9th" },
-  { label: "Dates", value: "14–16 October 2027" },
-  {
-    label: "Venue",
-    value: "Auto Cluster Exhibition Centre, Pimpri-Chinchwad, Pune",
-  },
+  { label: "Event dates", value: "14–16 Oct 2027" },
+  { label: "Location", value: "Pimpri-Chinchwad, Pune" },
   { label: "Organiser", value: "Futurex Group" },
 ];
 
-const h2 =
-  "text-[clamp(2rem,4.4vw,3.9rem)] font-light leading-[1.08] tracking-[-0.035em]";
+const headingStyle = "text-[clamp(2.15rem,4.6vw,4.5rem)] font-light leading-[1.07] tracking-[-0.045em]";
 
-function PrimaryLink({
-  href,
-  children,
-}: {
-  href: string;
-  children: React.ReactNode;
-}) {
+function Eyebrow({ children, light = false }: { children: React.ReactNode; light?: boolean }) {
+  return (
+    <p className={`flex items-center gap-3 text-xs font-bold uppercase tracking-[0.18em] ${light ? "text-brand" : "text-brand-dark"}`}>
+      <span className="h-[2px] w-7 bg-current" aria-hidden="true" />
+      {children}
+    </p>
+  );
+}
+
+function PrimaryLink({ href, children }: { href: string; children: React.ReactNode }) {
   return (
     <Link
       href={href}
-      className="group inline-flex min-h-12 items-center gap-4 rounded-full bg-brand py-2 pl-6 pr-2 text-sm font-bold text-white transition duration-300 hover:bg-brand-dark active:scale-[0.98] focus-visible:outline-offset-4"
+      className="group inline-flex min-h-12 items-center gap-5 rounded-full bg-brand py-2 pl-6 pr-2 text-sm font-bold text-white transition-colors duration-300 hover:bg-brand-dark focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-brand"
     >
       {children}
-      <span className="grid h-8 w-8 place-items-center rounded-full bg-white text-brand-dark transition-transform duration-300 group-hover:scale-105">
-        <ArrowRight
-          size={16}
-          aria-hidden
-          className="-rotate-45 transition-transform duration-300 group-hover:rotate-0"
-        />
+      <span className="grid size-9 place-items-center rounded-full bg-white text-brand-dark transition-transform duration-300 group-hover:rotate-45 group-hover:scale-105">
+        <ArrowUpRight size={17} aria-hidden="true" />
       </span>
     </Link>
   );
 }
 
+function EventSchema() {
+  const data = {
+    "@context": "https://schema.org",
+    "@type": "ExhibitionEvent",
+    "@id": `${website}/#event-2027`,
+    name: "India International EV Show 2027",
+    description: "The 9th India International EV Show brings together electric vehicle manufacturers, suppliers, charging infrastructure providers, battery specialists and mobility professionals.",
+    startDate: "2027-10-14",
+    endDate: "2027-10-16",
+    eventStatus: "https://schema.org/EventScheduled",
+    eventAttendanceMode: "https://schema.org/OfflineEventAttendanceMode",
+    location: {
+      "@type": "Place",
+      name: "Auto Cluster Exhibition Centre",
+      address: {
+        "@type": "PostalAddress",
+        addressLocality: "Pimpri-Chinchwad",
+        addressRegion: "Maharashtra",
+        addressCountry: "IN",
+      },
+    },
+    organizer: { "@type": "Organization", name: "Futurex Group" },
+    url: website,
+  };
+  return (
+    <script
+      type="application/ld+json"
+      dangerouslySetInnerHTML={{ __html: JSON.stringify(data).replace(/</g, "\\u003c") }}
+    />
+  );
+}
+
 export default function HomePage() {
-  // The existing (site)/layout.tsx provides header, main, footer and global structured data.
-  // Colour rule for the page: green is the accent (bold words, numbers, bars), navy and white are the ground.
+  // (site)/layout.tsx continues to provide global header, main and footer.
+  // Keep original branding, image assets and actual conversion destinations.
   return (
     <>
-      <CompactHero />
+      <EventSchema />
+      <HeroEntrance><CompactHero /></HeroEntrance>
 
-      {/* About: one statement, then the plain facts */}
-      <section
-        id="about-show"
-        className="relative scroll-mt-28 overflow-hidden bg-white py-20 sm:py-28"
-      >
-        <Chevrons className="pointer-events-none absolute -right-6 top-10 h-52 w-40 rotate-180 text-brand/[0.1]" />
-        <div className="container-site relative grid gap-8 lg:grid-cols-12">
-          <FadeUp className="lg:col-span-3">
-            <p className="text-sm font-semibold text-brand-dark">
-              About the show
-            </p>
-          </FadeUp>
+      {/* 01 — Editorial intro and verified event information */}
+      <section id="about-show" className="relative scroll-mt-28 overflow-hidden bg-white py-20 sm:py-28 lg:py-36">
+        <div className="container-site grid gap-10 lg:grid-cols-12 lg:gap-8">
+          <Reveal className="lg:col-span-3"><Eyebrow>About the show</Eyebrow></Reveal>
           <div className="lg:col-span-9">
-            <FadeUp>
-              <h2 className="text-[clamp(1.6rem,3.3vw,2.9rem)] font-light leading-[1.22] tracking-[-0.03em] text-ink">
-                The India International EV Show puts manufacturers, suppliers,
-                engineers and charging specialists{" "}
-                <span className="font-bold text-brand-dark">
-                  in one place in Pune
-                </span>
-                , so discovery and sourcing happen face to face.
-              </h2>
-            </FadeUp>
-            <dl className="mt-14 grid gap-x-8 gap-y-6 pt-6 sm:grid-cols-2 lg:grid-cols-4">
-              <Rule className="col-span-full -mt-6 mb-6" />
-              {aboutFacts.map((f, i) => (
-                <FadeUp key={f.label} delay={i * 0.07}>
-                  <dt className="text-xs text-copy">{f.label}</dt>
-                  <dd className="mt-1.5 text-sm font-bold leading-6 text-brand-dark">
-                    {f.value}
-                  </dd>
-                </FadeUp>
+            <LineHeading
+              className="max-w-5xl text-[clamp(1.95rem,3.65vw,3.65rem)] font-light leading-[1.18] tracking-[-0.04em] text-ink"
+              lines={[
+                <>The India International EV Show connects manufacturers, suppliers, engineers and charging specialists</>,
+                <><strong className="font-bold text-brand-dark">face to face in Pune.</strong></>,
+              ]}
+            />
+            <Reveal delay={0.16} className="mt-8 max-w-2xl">
+              <p className="text-base leading-8 text-copy">Across three days, explore electric mobility technologies, meet the people building them and identify new opportunities for your business.</p>
+            </Reveal>
+            <DividerReveal className="mt-14" />
+            <dl className="mt-8 grid gap-x-8 gap-y-9 sm:grid-cols-2 xl:grid-cols-4">
+              {facts.map((fact, index) => (
+                <Reveal key={fact.label} delay={index * 0.07}>
+                  <dt className="text-xs uppercase tracking-[0.12em] text-copy">{fact.label}</dt>
+                  <dd className="mt-3 text-base font-bold leading-6 text-ink">{fact.value}</dd>
+                </Reveal>
               ))}
             </dl>
           </div>
         </div>
       </section>
 
-      {/* Sectors: heading stays put; the row in the middle of the screen lights up */}
-      <section
-        id="show-sectors"
-        className="scroll-mt-28 bg-soft py-20 sm:py-28"
-      >
-        <div className="container-site grid gap-12 lg:grid-cols-12">
-          <div className="lg:col-span-4">
-            <div className="lg:sticky lg:top-28">
-              <FadeUp>
-                <p className="text-sm font-semibold text-brand-dark">
-                  Exhibitor profiles
-                </p>
-              </FadeUp>
-              <Lines
-                as="h2"
-                className={`mt-4 text-ink ${h2}`}
-                lines={[
-                  "Six sectors,",
-                  <span key="b" className="font-bold text-brand-dark">
-                    one platform.
-                  </span>,
-                ]}
-              />
-            </div>
-          </div>
-          <ul className="lg:col-span-8">
-            <li aria-hidden>
-              <Rule tone="bg-ink" />
-            </li>
-            {sectors.map(({ number, name, desc }, i) => (
-              <li key={number}>
-                <FadeUp delay={Math.min(i, 2) * 0.05}>
-                  <FocusRow className="group relative border-b border-stroke py-7 transition-[padding] duration-500 hover:pl-4 data-[active=true]:pl-4 sm:py-8">
-                    <span
-                      aria-hidden
-                      className="absolute left-0 top-1/2 h-0 w-[3px] -translate-y-1/2 bg-gradient-to-b from-[#3BB36B] to-[#1D8043] transition-all duration-500 group-hover:h-12 group-data-[active=true]:h-12"
-                    />
-                    <div className="grid grid-cols-[2.25rem_1fr] gap-x-3 gap-y-2 sm:grid-cols-[3rem_1fr_1fr_1.5rem] sm:items-center sm:gap-x-6">
-                      <span className="text-xs font-bold text-brand-dark">
-                        {number}
-                      </span>
-                      <h3 className="text-xl font-bold tracking-tight text-ink transition-colors duration-500 group-hover:text-brand-dark group-data-[active=true]:text-brand-dark sm:text-2xl">
-                        {name}
-                      </h3>
-                      <p className="col-start-2 text-sm leading-7 text-copy sm:col-start-auto">
-                        {desc}
-                      </p>
-                      <svg
-                        aria-hidden
-                        viewBox="0 0 24 24"
-                        fill="none"
-                        stroke="currentColor"
-                        strokeWidth="2"
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        className="hidden h-5 w-5 -translate-x-2 translate-y-2 text-brand-dark opacity-0 transition-all duration-500 group-hover:translate-x-0 group-hover:translate-y-0 group-hover:opacity-100 group-data-[active=true]:translate-x-0 group-data-[active=true]:translate-y-0 group-data-[active=true]:opacity-100 sm:block"
-                      >
-                        <path d="M7 17 17 7M8 7h9v9" />
-                      </svg>
-                    </div>
-                  </FocusRow>
-                </FadeUp>
-              </li>
-            ))}
-          </ul>
-        </div>
-      </section>
+    {/* 02 — Premium animated exhibitor profiles */}
+<ShowSectors sectors={sectors} />
 
-      {/* Why Pune: photo-led, second photo overlaps the first */}
-      <section className="relative overflow-hidden bg-brand-night py-20 text-white sm:py-28">
-        <Arc
-          opacity={0.5}
-          thickness="40px"
-          className="pointer-events-none absolute -left-44 top-[44%] aspect-square w-[460px]"
-        />
-        <div className="container-site relative">
-          <div className="grid gap-6 lg:grid-cols-12">
-            <FadeUp className="lg:col-span-3">
-              <p className="text-sm font-semibold text-brand">Why Pune</p>
-            </FadeUp>
-            <Lines
-              as="h2"
-              className={`lg:col-span-9 ${h2}`}
-              lines={[
-                "Close to where",
-                <span key="b" className="font-bold text-brand">
-                  India's vehicles are built.
-                </span>,
-              ]}
-            />
-          </div>
-          <Photo className="mt-12 aspect-[16/10] rounded-md sm:aspect-[2/1]">
-            <Image
-              src="/images/exhibitors.webp"
-              alt="Visitors engaging with exhibitors at the previous show"
-              fill
-              sizes="(max-width:1280px) 100vw, 1200px"
-              className="object-cover"
-            />
-          </Photo>
-          <div className="mt-10 grid gap-10 lg:grid-cols-12">
-            <FadeUp className="lg:col-span-5">
-              <p className="text-sm leading-8 text-white/75 sm:text-base">
-                Pune and Pimpri-Chinchwad have an established automotive
-                engineering and manufacturing ecosystem. IIEV gives component
-                suppliers, technology providers, manufacturers and commercial
-                buyers a place to meet.
-              </p>
-            </FadeUp>
-            <div className="lg:col-span-4 lg:col-start-8 lg:-mt-44">
-              <Photo className="aspect-[4/5] rounded-md border-[6px] border-brand-night">
-                <Image
-                  src="/images/discussions.webp"
-                  alt="Industry participants discussing technology at the previous edition"
-                  fill
-                  sizes="(max-width:1024px) 100vw, 400px"
-                  className="object-cover"
-                />
-              </Photo>
-            </div>
-          </div>
-        </div>
-      </section>
+   
+{/* =========================================================
+    WHY PUNE — REFINED PREMIUM EDITORIAL SECTION
+    Main: Video | Secondary: Image
+========================================================= */}
 
-      {/* Audience: plain typographic grid, no cards */}
-      <section id="industry-audience" className="bg-white py-20 sm:py-28">
-        <div className="container-site">
-          <div className="grid gap-6 lg:grid-cols-12 lg:items-end">
-            <Lines
-              as="h2"
-              className={`text-ink lg:col-span-7 ${h2}`}
-              lines={[
-                "The people you'll meet",
-                <span key="b" className="font-bold text-brand-dark">
-                  on the floor.
-                </span>,
-              ]}
-            />
-            <FadeUp className="lg:col-span-4 lg:col-start-9">
-              <p className="text-sm leading-8 text-copy">
-                Professional conversations across manufacturing, distribution,
-                infrastructure, technology and research.
-              </p>
-            </FadeUp>
-          </div>
-          <div className="mt-14 grid gap-x-10 gap-y-12 sm:grid-cols-2 lg:grid-cols-3">
-            {audience.map((a, i) => (
-              <FadeUp key={a.title} delay={(i % 3) * 0.08}>
-                <Rule />
-                <h3 className="mt-5 text-lg font-bold leading-snug text-ink">
-                  {a.title}
-                </h3>
-                <p className="mt-3 max-w-xs text-sm leading-7 text-copy">
-                  {a.desc}
-                </p>
-              </FadeUp>
-            ))}
-          </div>
-        </div>
-      </section>
+<section
+  id="why-pune"
+  aria-labelledby="why-pune-title"
+  className="relative isolate overflow-hidden bg-brand-night py-20 text-white sm:py-28 lg:py-36"
+>
+  {/* Background architectural details */}
+  <div
+    aria-hidden="true"
+    className="pointer-events-none absolute inset-0 z-0 overflow-hidden"
+  >
+    <div className="absolute inset-y-0 left-[8%] hidden w-px bg-white/[0.035] lg:block" />
+    <div className="absolute inset-y-0 right-[8%] hidden w-px bg-white/[0.035] lg:block" />
 
-      {/* Experience: one wide photo, then the four-step visit */}
-      <section id="experience" className="bg-soft py-20 sm:py-28">
-        <div className="container-site">
-          <Lines
-            as="h2"
-            className={`text-ink ${h2}`}
+    <span
+      className="absolute -right-[2%] top-10 select-none whitespace-nowrap text-[clamp(8rem,24vw,25rem)] font-black leading-none tracking-[-0.11em] text-transparent opacity-[0.07]"
+      style={{
+        WebkitTextStroke: "1px #ffffff",
+      }}
+    >
+      PUNE
+    </span>
+  </div>
+
+  <div className="container-site relative z-10">
+
+    {/* =====================================================
+        01 — HEADING
+    ===================================================== */}
+
+    <div className="grid items-start gap-7 lg:grid-cols-12 lg:gap-8">
+
+      <Reveal className="lg:col-span-3">
+        <div className="flex items-center gap-3">
+          <span
+            aria-hidden="true"
+            className="h-[2px] w-8 shrink-0 bg-brand"
+          />
+
+          <Eyebrow light>
+            Why Pune
+          </Eyebrow>
+        </div>
+
+        <p className="mt-5 hidden max-w-[210px] text-xs leading-6 text-white/45 lg:block">
+          A strategic meeting point for India's electric
+          mobility industry.
+        </p>
+      </Reveal>
+
+      <div className="min-w-0 lg:col-span-9">
+
+        <div id="why-pune-title">
+          <LineHeading
+            className={`${headingStyle} max-w-5xl`}
             lines={[
-              "Real products.",
-              <span key="b" className="font-bold text-brand-dark">
-                Real conversations.
-              </span>,
+              <>Built on engineering.</>,
+              <>
+                <strong className="font-bold text-brand">
+                  Driven by innovation.
+                </strong>
+              </>,
             ]}
           />
-          <Photo className="mt-12 aspect-[4/3] rounded-md sm:aspect-[21/9]">
-            <Image
-              src="/images/vehicle-display.webp"
-              alt="Vehicles on display at IIEV"
-              fill
-              sizes="(max-width:1280px) 100vw, 1200px"
-              className="object-cover"
-            />
-            <div className="absolute inset-0 bg-gradient-to-t from-brand-night/70 via-transparent to-transparent" />
-            <p className="absolute bottom-5 left-5 text-lg font-bold text-white sm:bottom-7 sm:left-7 sm:text-2xl">
-              See the industry up close.
-            </p>
-          </Photo>
-          <ol className="mt-14 grid gap-x-8 gap-y-10 sm:grid-cols-2 lg:grid-cols-4">
-            {steps.map((s, i) => (
-              <li key={s.n}>
-                <FadeUp delay={i * 0.08}>
-                  <div className="relative">
-                    <Rule />
-                    <Tab className="absolute -top-px left-0" />
-                    <span className="mt-6 block text-xs font-bold text-brand-dark">
-                      {s.n}
-                    </span>
-                    <h3 className="mt-3 text-xl font-bold text-ink">
-                      {s.title}
-                    </h3>
-                    <p className="mt-2 max-w-[15rem] text-sm leading-7 text-copy">
-                      {s.text}
-                    </p>
-                  </div>
-                </FadeUp>
-              </li>
-            ))}
-          </ol>
         </div>
-      </section>
 
-      {/* Closing call: bookends the hero with the same arc */}
-      <section
-        id="participate"
-        className="relative isolate scroll-mt-28 overflow-hidden bg-brand-night py-24 text-white sm:py-32"
-      >
-        <Arc className="pointer-events-none absolute -right-[14%] -top-[40%] -z-10 aspect-square w-[min(60vw,700px)]" />
-        {/* flat brand-green ring and chevrons instead of any glow */}
+        <Reveal className="mt-6 max-w-2xl sm:mt-7">
+          <p className="text-sm leading-7 text-white/65 sm:text-base sm:leading-8">
+            Pune brings automotive manufacturing,
+            advanced engineering and emerging electric
+            mobility technologies into one connected
+            industrial ecosystem.
+          </p>
+        </Reveal>
+      </div>
+    </div>
+
+    {/* =====================================================
+        02 — VIDEO + IMAGE EDITORIAL COMPOSITION
+    ===================================================== */}
+
+    <div className="relative mt-12 sm:mt-16 lg:mt-20">
+
+      {/* MAIN VIDEO */}
+      <div className="relative lg:mr-[13%]">
+
+        <ImageReveal
+          parallax
+          className="group relative aspect-[4/5] overflow-hidden rounded-sm bg-[#142B25] sm:aspect-[16/9] lg:aspect-[1.85/1]"
+        >
+          {/* Static poster and video fallback */}
+          <Image
+            src="/images/DSC00889.JPG.webp"
+            alt="Visitors exploring electric mobility technology at an earlier India International EV Show"
+            fill
+            sizes="(max-width: 1024px) 100vw, 1050px"
+            className="object-cover"
+          />
+
+          {/* Exhibition footage */}
+          <video
+            className="absolute inset-0 z-[1] h-full w-full object-cover transition-transform duration-[1200ms] ease-out group-hover:scale-[1.025] motion-reduce:hidden"
+            autoPlay
+            muted
+            loop
+            playsInline
+            preload="metadata"
+            poster="/images/DSC00889.JPG.webp"
+            aria-hidden="true"
+          >
+            <source
+              src="/video/iiev-hero.mp4"
+              type="video/mp4"
+            />
+          </video>
+
+          {/* Cinematic contrast */}
+          <div
+            aria-hidden="true"
+            className="pointer-events-none absolute inset-0 z-[2] bg-gradient-to-t from-[#061914]/85 via-[#061914]/10 to-[#061914]/20"
+          />
+
+          <div
+            aria-hidden="true"
+            className="pointer-events-none absolute inset-0 z-[2] bg-gradient-to-r from-[#061914]/20 to-transparent"
+          />
+
+          {/* Top editorial label */}
+          <div className="pointer-events-none absolute left-5 right-5 top-5 z-[3] flex items-center justify-between gap-3 sm:left-8 sm:right-8 sm:top-8">
+
+            <div className="flex items-center gap-3">
+              <span className="h-2 w-2 shrink-0 rounded-full bg-brand" />
+
+              <span className="text-[10px] font-bold uppercase tracking-[0.16em] text-white/90 sm:tracking-[0.2em]">
+                The IIEV Experience
+              </span>
+            </div>
+
+            <span className="hidden text-[10px] font-semibold uppercase tracking-[0.16em] text-white/65 sm:block">
+              Pune, India
+            </span>
+          </div>
+
+          {/* Main video caption */}
+          <div className="pointer-events-none absolute bottom-6 left-5 right-5 z-[3] sm:bottom-9 sm:left-9 sm:right-9 lg:bottom-12 lg:left-12">
+
+            <span className="mb-4 block h-[2px] w-9 bg-brand" />
+
+            <p className="max-w-xl text-[clamp(1.4rem,2.5vw,2.7rem)] font-semibold leading-[1.18] tracking-[-0.035em] text-white">
+              Where industry connections
+              <span className="block text-brand">
+                become opportunities.
+              </span>
+            </p>
+          </div>
+        </ImageReveal>
+      </div>
+
+      {/* =================================================
+          03 — OVERLAPPING SECONDARY IMAGE
+      ================================================= */}
+
+      <div className="relative z-10 -mt-8 ml-auto mr-3 w-[65%] sm:-mt-16 sm:mr-8 sm:w-[44%] lg:absolute lg:-bottom-24 lg:right-0 lg:ml-0 lg:mr-0 lg:mt-0 lg:w-[31%]">
+
+        <ImageReveal
+          className="group relative aspect-[4/5] overflow-hidden rounded-sm border-[5px] border-brand-night bg-[#17342A] shadow-[0_20px_60px_rgba(0,0,0,0.25)] sm:border-[7px]"
+        >
+          <Image
+            src="/images/discussions.webp"
+            alt="Mobility industry professionals discussing products and technology at an earlier IIEV exhibition"
+            fill
+            sizes="(max-width: 640px) 65vw, (max-width: 1024px) 44vw, 400px"
+            className="object-cover transition-transform duration-[1100ms] ease-out group-hover:scale-[1.045]"
+          />
+
+          <div
+            aria-hidden="true"
+            className="pointer-events-none absolute inset-0 bg-gradient-to-t from-[#061914]/70 via-transparent to-transparent"
+          />
+
+          <div className="absolute bottom-5 left-5 right-5 sm:bottom-7 sm:left-7">
+
+            <span className="text-[10px] font-bold uppercase tracking-[0.15em] text-white/85">
+              Industry Networking
+            </span>
+
+            <span className="mt-3 block h-[2px] w-8 bg-brand transition-[width] duration-500 group-hover:w-14" />
+          </div>
+        </ImageReveal>
+
+        {/* Editorial corner */}
         <div
-          aria-hidden
-          className="pointer-events-none absolute -bottom-52 -left-40 -z-10 aspect-square w-[460px] rounded-full border border-brand/30 bg-brand/[0.08]"
+          aria-hidden="true"
+          className="pointer-events-none absolute -bottom-3 -right-3 -z-10 h-16 w-16 border-b border-r border-brand/45 sm:-bottom-5 sm:-right-5 sm:h-20 sm:w-20"
         />
-        <Chevrons className="pointer-events-none absolute bottom-10 right-6 -z-10 hidden h-44 w-32 text-white/[0.06] sm:block" />
-        <div className="container-site">
-          <Lines
-            as="h2"
-            className="max-w-4xl text-[clamp(2.3rem,5.6vw,5rem)] font-light leading-[1.05] tracking-[-0.035em]"
-            lines={[
-              "Take your place",
-              <span key="b" className="font-bold text-brand">
-                in the EV conversation.
-              </span>,
-            ]}
-          />
-          <FadeUp delay={0.15}>
-            <p className="mt-7 max-w-md text-sm leading-8 text-white/75 sm:text-base">
-              Exhibit, visit, sponsor or partner. Talk to the India
-              International EV Show team about taking part.
-            </p>
-            <div className="mt-9 flex flex-wrap items-center gap-x-8 gap-y-4">
-              <PrimaryLink href="mailto:namit@futurextrade.com?subject=IIEV%202027%20Participation%20Enquiry">
-                Contact the team
-              </PrimaryLink>
-              <Link
-                href="/downloads"
-                target="_blank"
-                className="inline-flex items-center gap-2 text-sm font-bold underline decoration-white/40 underline-offset-[6px] transition-colors duration-300 hover:decoration-brand focus-visible:outline-offset-4"
-              >
-                <Download size={16} aria-hidden /> View brochure
-              </Link>
-            </div>
-          </FadeUp>
-          <div className="mt-20">
-            <Rule tone="bg-white/20" />
-            <FadeUp delay={0.2}>
-              <p className="pt-5 text-xs text-white/60">
-                14–16 October 2027, Auto Cluster Exhibition Centre, Pune
+      </div>
+    </div>
+
+    {/* =====================================================
+        04 — EDITORIAL STORY CONTENT
+    ===================================================== */}
+
+    <div className="mt-14 grid items-start gap-9 sm:mt-16 lg:mt-40 lg:grid-cols-12 lg:gap-8">
+
+      {/* Section marker */}
+      <Reveal className="lg:col-span-3">
+        <div className="flex items-center gap-3">
+
+          <span className="text-xs font-bold tracking-[0.18em] text-brand">
+            01 / LOCATION
+          </span>
+
+          <span className="h-px w-9 bg-brand/60" />
+        </div>
+      </Reveal>
+
+      {/* Main story */}
+      <Reveal className="min-w-0 lg:col-span-6">
+
+        <h3 className="max-w-2xl text-[clamp(1.55rem,2.7vw,2.6rem)] font-light leading-[1.25] tracking-[-0.03em] text-white">
+          A city that understands
+          <span className="font-bold text-brand">
+            {" "}how mobility is made.
+          </span>
+        </h3>
+
+        <p className="mt-6 max-w-xl text-sm leading-8 text-white/65 sm:text-base">
+          Pune and Pimpri-Chinchwad are home to an established
+          automotive engineering and manufacturing ecosystem.
+          IIEV brings component suppliers, technology
+          providers, manufacturers and commercial buyers
+          together here.
+        </p>
+      </Reveal>
+
+      {/* Industry focus */}
+      <Reveal className="lg:col-span-3">
+
+        <div className="border-t border-white/20 pt-5">
+
+          <span className="text-[10px] font-semibold uppercase tracking-[0.18em] text-brand">
+            Industry Focus
+          </span>
+
+          <p className="mt-3 text-sm leading-7 text-white/75">
+            Automotive manufacturing, EV components,
+            charging infrastructure and mobility technology.
+          </p>
+        </div>
+      </Reveal>
+    </div>
+
+    {/* =====================================================
+        05 — LOCATION FOOTER
+    ===================================================== */}
+
+    <Reveal className="mt-16 sm:mt-20">
+
+      <div className="border-t border-white/20">
+
+        <div className="flex flex-col gap-6 py-7 md:flex-row md:items-center md:justify-between">
+
+          <div className="flex items-start gap-4">
+
+            <span className="flex h-11 w-11 shrink-0 items-center justify-center border border-brand/35 text-brand">
+              <MapPin
+                size={19}
+                strokeWidth={1.7}
+                aria-hidden="true"
+              />
+            </span>
+
+            <div className="min-w-0">
+
+              <span className="block text-[10px] font-semibold uppercase tracking-[0.18em] text-white/45">
+                Event Venue
+              </span>
+
+              <p className="mt-1 text-sm font-semibold leading-6 text-white sm:text-base">
+                Auto Cluster Exhibition Centre
               </p>
-            </FadeUp>
+
+              <p className="mt-1 text-xs leading-6 text-white/55 sm:text-sm">
+                Pimpri-Chinchwad, Pune, Maharashtra, India
+              </p>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-3 md:justify-end">
+
+            <span className="h-2 w-2 shrink-0 rounded-full bg-brand" />
+
+            <span className="text-xs font-semibold uppercase tracking-[0.12em] text-white/75">
+              14–16 October 2027
+            </span>
           </div>
         </div>
-      </section>
+      </div>
+    </Reveal>
+  </div>
+</section>
+
+
+
+     <IndustryAudience audiences={audiences} />
+
+     <ShowExperience experience={experience} />
+ 
+
+   {/* 06 — Event Essentials / SEO / AEO / GEO */}
+{/* <EventEssentials /> */}
+
+    {/* 07 — Animated final participation section */}
+<ParticipateSection />
     </>
   );
 }

@@ -180,7 +180,7 @@ export default async function ExhibitorProfilePage() {
             </h2>
 
             <p className="mx-auto mt-6 max-w-3xl text-sm leading-8 text-[#4A5750] sm:text-base">
-              India International EV Show covers
+              9th India International EV Show covers
               businesses involved in electric vehicles,
               components, battery technologies, charging,
               mobility systems and manufacturing.
@@ -254,17 +254,7 @@ export default async function ExhibitorProfilePage() {
             </div>
           )}
 
-          <AboutReveal className="mt-10">
-            <div className="rounded-2xl border border-[#DCE7DE] bg-white p-6 sm:p-8">
-              <p className="text-[13px] leading-7 text-[#4A5750]">
-                These are sector and audience profiles,
-                not a list of confirmed exhibitors or
-                registered visitors for 2027.
-                Individual company participation is
-                confirmed separately by the organiser.
-              </p>
-            </div>
-          </AboutReveal>
+        
         </div>
       </section>
 

@@ -147,9 +147,7 @@ export default async function AboutPage() {
                 className="h-full"
               >
                 <article className="group flex h-full min-h-[230px] flex-col justify-between rounded-2xl border border-[#DFE8E1] bg-white p-7 transition-all duration-300 hover:-translate-y-1 hover:border-[#23A455]/50 hover:shadow-[0_18px_40px_-28px_rgba(9,27,19,0.3)]">
-                  <span className="text-xs font-extrabold text-[#16893F]">
-                    {item.number} / 03
-                  </span>
+               
 
                   <div className="mt-9">
                     <h3 className="text-lg font-extrabold text-[#102A1E]">
