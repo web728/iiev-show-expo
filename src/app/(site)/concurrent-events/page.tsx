@@ -110,7 +110,7 @@ export default async function ConcurrentEventsPage() {
         title="Concurrent"
         highlight="Events"
         description="Explore the relationship between electric mobility, battery technologies and solar energy through related industry exhibitions."
-        image="/media/2026/arrival-banner.webp"
+        image="/images/DSC00716.JPG.webp"
         imagePosition="center 48%"
         crumbs={[
           { label: "About", href: "/about/" },

@@ -61,7 +61,7 @@ export default async function AboutPage() {
         title="About the"
         highlight="IIEV Show"
         description="A dedicated business platform connecting companies, technologies and professionals across India's electric mobility value chain."
-        image="/media/2026/inauguration-ribbon.webp"
+        image="/images/DSC01272.JPG.webp"
         imagePosition="center 45%"
         crumbs={[{ label: "About the Show" }]}
       />
@@ -170,7 +170,7 @@ export default async function AboutPage() {
           <AboutReveal className="relative">
             <div className="relative aspect-[4/3] overflow-hidden rounded-2xl bg-[#102A1E]">
               <Image
-                src="/images/industry-floor.webp"
+                src="/images/DSC01594.JPG.webp"
                 alt="Industry participants at the previous IIEV exhibition"
                 fill
                 sizes="(max-width:1024px) 100vw, 45vw"

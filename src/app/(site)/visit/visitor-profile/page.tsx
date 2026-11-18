@@ -200,7 +200,7 @@ export default function VisitorProfilePage() {
           >
             <div className="relative h-[250px] overflow-hidden rounded-[22px] bg-[#102A1E] sm:h-[350px]">
               <Image
-                src="/media/2026/expo-aisle-visitors.webp"
+                src="/images/DSC01856.JPG.webp"
                 alt="Visitors exploring an India International EV Show exhibition"
                 fill
                 sizes="(max-width:768px) 100vw, 58vw"
@@ -210,7 +210,7 @@ export default function VisitorProfilePage() {
 
             <div className="relative h-[220px] overflow-hidden rounded-[22px] bg-[#102A1E] sm:h-[350px]">
               <Image
-                src="/media/2026/expo-car-interest.webp"
+                src="/images/DSC01809.JPG.webp"
                 alt="Visitors examining electric vehicle exhibits"
                 fill
                 sizes="(max-width:768px) 100vw, 42vw"

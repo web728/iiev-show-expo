@@ -121,7 +121,7 @@ export default async function VenuePage() {
         title="Auto Cluster"
         highlight="Exhibition Centre"
         description="The venue for India International EV Show 2027 in Pimpri-Chinchwad, Pune."
-        image="/media/2026/arrival-welcome-gate.webp"
+        image="/images/DSC00707.JPG.webp"
         imagePosition="center 48%"
         crumbs={[
           { label: "Visit", href: "/visit/" },
@@ -187,7 +187,7 @@ export default async function VenuePage() {
           <AboutReveal delay={0.1}>
             <div className="group relative aspect-[5/4] overflow-hidden rounded-[24px] bg-[#102A1E]">
               <Image
-                src="/media/2026/arrival-welcome-gate.webp"
+                src="/images/DSC00707.JPG.webp"
                 alt="IIEV Show 2026 entrance at Auto Cluster Exhibition Centre, Pimpri-Chinchwad"
                 fill
                 sizes="(max-width:1024px) 100vw, 55vw"

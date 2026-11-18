@@ -515,7 +515,7 @@ export default async function WhyIievPage() {
           <AboutReveal delay={0.1}>
             <div className="relative aspect-[5/4] overflow-hidden rounded-[24px] bg-[#091B13]">
               <Image
-                src="/media/2026/expo-river-stall.webp"
+                src="/images/DSC00707.JPG.webp"
                 alt="Exhibition stand at IIEV Show 2026"
                 fill
                 sizes="(max-width:1024px) 100vw, 50vw"

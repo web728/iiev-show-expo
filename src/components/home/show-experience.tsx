@@ -498,7 +498,7 @@ export function ShowExperience({
             }
           >
             <Image
-              src="/images/vehicle-display.webp"
+              src="/images/DSC00730.JPG.webp"
               alt="Electric vehicles and mobility technologies on display at India International EV Show"
               fill
               sizes="100vw"

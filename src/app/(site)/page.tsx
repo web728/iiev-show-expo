@@ -334,7 +334,7 @@ export default function HomePage() {
           className="group relative aspect-[4/5] overflow-hidden rounded-sm border-[5px] border-brand-night bg-[#17342A] shadow-[0_20px_60px_rgba(0,0,0,0.25)] sm:border-[7px]"
         >
           <Image
-            src="/images/discussions.webp"
+            src="/images/DSC01619_3x4.png"
             alt="Mobility industry professionals discussing products and technology at an earlier IIEV exhibition"
             fill
             sizes="(max-width: 640px) 65vw, (max-width: 1024px) 44vw, 400px"
@@ -375,7 +375,7 @@ export default function HomePage() {
         <div className="flex items-center gap-3">
 
           <span className="text-xs font-bold tracking-[0.18em] text-brand">
-            01 / LOCATION
+            LOCATION
           </span>
 
           <span className="h-px w-9 bg-brand/60" />
@@ -417,54 +417,7 @@ export default function HomePage() {
         </div>
       </Reveal>
     </div>
-
-    {/* =====================================================
-        05 — LOCATION FOOTER
-    ===================================================== */}
-
-    <Reveal className="mt-16 sm:mt-20">
-
-      <div className="border-t border-white/20">
-
-        <div className="flex flex-col gap-6 py-7 md:flex-row md:items-center md:justify-between">
-
-          <div className="flex items-start gap-4">
-
-            <span className="flex h-11 w-11 shrink-0 items-center justify-center border border-brand/35 text-brand">
-              <MapPin
-                size={19}
-                strokeWidth={1.7}
-                aria-hidden="true"
-              />
-            </span>
-
-            <div className="min-w-0">
-
-              <span className="block text-[10px] font-semibold uppercase tracking-[0.18em] text-white/45">
-                Event Venue
-              </span>
-
-              <p className="mt-1 text-sm font-semibold leading-6 text-white sm:text-base">
-                Auto Cluster Exhibition Centre
-              </p>
-
-              <p className="mt-1 text-xs leading-6 text-white/55 sm:text-sm">
-                Pimpri-Chinchwad, Pune, Maharashtra, India
-              </p>
-            </div>
-          </div>
-
-          <div className="flex items-center gap-3 md:justify-end">
-
-            <span className="h-2 w-2 shrink-0 rounded-full bg-brand" />
-
-            <span className="text-xs font-semibold uppercase tracking-[0.12em] text-white/75">
-              14–16 October 2027
-            </span>
-          </div>
-        </div>
-      </div>
-    </Reveal>
+ 
   </div>
 </section>
 

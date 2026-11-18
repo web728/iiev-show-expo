@@ -39,7 +39,7 @@ export default async function RegisterPage() {
         title="Visitor"
         highlight="Registration"
         description="Register to visit India International EV Show 2027 and receive your personal entry badge through the official registration process."
-        image="/media/2026/expo-stall-visitors.webp"
+        image="/images/DSC00814.JPG.webp"
         imagePosition="center 48%"
         crumbs={[
           {

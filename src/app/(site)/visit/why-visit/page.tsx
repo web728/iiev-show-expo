@@ -269,7 +269,7 @@ export default async function WhyVisitPage() {
         title="Why Visit"
         highlight="IIEV Show?"
         description="Discover electric mobility technologies, explore new products and connect with manufacturers, suppliers and other industry participants."
-        image="/media/2026/expo-car-interest.webp"
+        image="/images/DSC01797.JPG.webp"
         imagePosition="center 48%"
         crumbs={[
           { label: "Visit", href: "/visit/" },
@@ -540,7 +540,7 @@ export default async function WhyVisitPage() {
             <div className="relative">
               <div className="relative aspect-[5/4] overflow-hidden rounded-[24px] bg-[#091B13] shadow-[0_40px_80px_-40px_rgba(0,0,0,.7)]">
                 <Image
-                  src="/media/2026/expo-aisle-visitors.webp"
+                  src="/images/DSC01823.JPG.webp"
                   alt="Visitors exploring exhibits at the India International EV Show"
                   fill
                   sizes="(max-width:1024px) 100vw, 50vw"
@@ -549,9 +549,7 @@ export default async function WhyVisitPage() {
 
                 <div className="absolute inset-0 bg-gradient-to-t from-[#091B13]/55 via-transparent to-transparent" />
 
-                <span className="absolute bottom-5 left-5 rounded-full border border-white/20 bg-[#091B13]/70 px-4 py-2 text-[11px] font-semibold backdrop-blur-sm">
-                  Previous exhibition
-                </span>
+                
               </div>
 
               <div
@@ -823,96 +821,7 @@ export default async function WhyVisitPage() {
           </AboutReveal>
         </div>
       </section>
-
-      {/* =====================================
-          FINAL CTA
-      ===================================== */}
-      <section className="relative isolate overflow-hidden bg-[#091B13] py-20 text-white sm:py-28">
-        <Image
-          src="/media/2026/expo-car-interest.webp"
-          alt=""
-          fill
-          sizes="100vw"
-          aria-hidden="true"
-          className="-z-20 object-cover opacity-[0.14]"
-        />
-        <div
-          aria-hidden="true"
-          className="absolute inset-0 -z-10 bg-gradient-to-b from-[#091B13] via-[#091B13]/80 to-[#091B13]"
-        />
-
-        <div
-          aria-hidden="true"
-          className="iiev-glow pointer-events-none absolute left-1/2 top-1/2 -z-10 h-[420px] w-[720px] -translate-x-1/2 -translate-y-1/2 rounded-full bg-[radial-gradient(closest-side,rgba(35,164,85,.3),transparent)]"
-        />
-
-        <svg
-          viewBox="0 0 500 500"
-          fill="none"
-          aria-hidden="true"
-          className="iiev-spin pointer-events-none absolute -right-36 -top-48 -z-10 size-[500px] opacity-30"
-        >
-          <circle cx="250" cy="250" r="210" stroke="#23A455" />
-          <circle cx="250" cy="250" r="145" stroke="#23A455" />
-          <circle
-            cx="250"
-            cy="250"
-            r="80"
-            stroke="#23A455"
-            strokeDasharray="6 12"
-          />
-          <circle cx="250" cy="40" r="5" fill="#23A455" />
-        </svg>
-
-        <svg
-          viewBox="0 0 500 500"
-          fill="none"
-          aria-hidden="true"
-          className="iiev-spin-rev pointer-events-none absolute -bottom-52 -left-40 -z-10 size-[500px] opacity-20"
-        >
-          <circle cx="250" cy="250" r="210" stroke="#23A455" />
-          <circle
-            cx="250"
-            cy="250"
-            r="145"
-            stroke="#23A455"
-            strokeDasharray="6 12"
-          />
-        </svg>
-
-        <AboutReveal className="relative mx-auto max-w-4xl px-5 text-center sm:px-8">
-          <div className="flex justify-center">
-            <Eyebrow light>IIEV 2027</Eyebrow>
-          </div>
-
-          <h2 className="mt-6 text-[clamp(2.1rem,4.7vw,4.2rem)] font-extrabold leading-[1.12] tracking-[-0.055em]">
-            Explore electric mobility
-            <span className="text-[#23A455]">
-              {" "}in Pune.
-            </span>
-          </h2>
-
-          <p className="mx-auto mt-6 max-w-xl text-sm leading-8 text-white/70 sm:text-base">
-            {edition.dateLabel} · {edition.venue.city}
-          </p>
-
-          <div className="mt-10 flex flex-wrap items-center justify-center gap-3">
-            <RegisterButton large />
-
-            <Link
-              href="/visit/visitor-profile/"
-              className="group inline-flex min-h-14 items-center justify-center gap-2 rounded-full border border-white/30 px-8 text-[14px] font-bold text-white transition-all duration-300 hover:border-[#23A455] hover:bg-white/10"
-            >
-              Visitor Profile
-              <ArrowRight
-                size={17}
-                aria-hidden="true"
-                className="transition-transform duration-300 group-hover:translate-x-1"
-              />
-            </Link>
-          </div>
-        </AboutReveal>
-      </section>
+ 
     </>
   );
 }

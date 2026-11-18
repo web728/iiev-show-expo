@@ -1,8 +1,8 @@
-
 "use client";
 
 import { useRef } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import {
   motion,
   useReducedMotion,
@@ -13,9 +13,6 @@ import {
 import {
   ArrowRight,
   Download,
-  CalendarDays,
-  MapPin,
-  ArrowUpRight,
 } from "lucide-react";
 
 const ease = [0.22, 1, 0.36, 1] as const;
@@ -294,6 +291,32 @@ export function ParticipateSection() {
       className="relative isolate scroll-mt-28 overflow-hidden bg-brand-night py-24 text-white sm:py-32 lg:py-40"
     >
       {/* ==========================================
+          BACKGROUND IMAGE + READABILITY OVERLAYS
+      ========================================== */}
+
+      <div
+        aria-hidden="true"
+        className="pointer-events-none absolute inset-0 z-0"
+      >
+        <Image
+          src="/images/DSC01428.jpg"
+          alt=""
+          fill
+          sizes="100vw"
+          className="object-cover object-center"
+        />
+
+        {/* Overall tint so the photo never fights the text */}
+        <div className="absolute inset-0 bg-brand-night/75" />
+
+        {/* Stronger on the left (where text sits), lighter on the right */}
+        <div className="absolute inset-0 bg-gradient-to-r from-brand-night/30 via-brand-night/40 to-brand-night/30" />
+
+        {/* Soft fade at top and bottom for clean section edges */}
+        <div className="absolute inset-0 bg-gradient-to-b from-brand-night/60 via-transparent to-brand-night/70" />
+      </div>
+
+      {/* ==========================================
           ANIMATED SVG BACKGROUND
       ========================================== */}
 
@@ -491,9 +514,6 @@ export function ParticipateSection() {
             View brochure
           </Link>
         </motion.div>
-
-       
- 
       </div>
     </section>
   );

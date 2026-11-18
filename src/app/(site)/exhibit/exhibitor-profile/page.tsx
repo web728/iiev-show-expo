@@ -156,7 +156,7 @@ export default async function ExhibitorProfilePage() {
         title="Exhibitor"
         highlight="Profile"
         description="Explore the manufacturers, solution providers and technology businesses relevant to the electric mobility exhibition."
-        image="/media/2026/expo-river-stall.webp"
+        image="/images/DSC00769.JPG.webp"
         imagePosition="center 48%"
         crumbs={[
           { label: "Exhibit", href: "/exhibit/" },

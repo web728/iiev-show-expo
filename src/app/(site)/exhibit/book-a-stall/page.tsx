@@ -40,7 +40,7 @@ export default async function BookAStallPage() {
         title="Exhibitor"
         highlight="Enquiry"
         description="Interested in exhibiting? Share your company information, products and preferred booth size with the IIEV Show team."
-        image="/media/2026/expo-stall-visitors.webp"
+        image="/images/DSC00748.JPG.webp"
         imagePosition="center 47%"
         crumbs={[
           {
